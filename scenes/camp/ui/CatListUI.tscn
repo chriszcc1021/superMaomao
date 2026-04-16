@@ -1,0 +1,20 @@
+[gd_scene format=3]
+
+[node name="CatListUI" type="PanelContainer"]
+offset_left = 990.0
+offset_top = 80.0
+offset_right = 1260.0
+offset_bottom = 520.0
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="VBox"]
+layout_mode = 2
+text = "猫咪列表"
+
+[node name="CatListText" type="RichTextLabel" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+text = "暂无猫咪"

@@ -1,0 +1,26 @@
+extends Node
+
+const CAMP_SCENE_PATH := "res://scenes/camp/CampScene.tscn"
+const EXPEDITION_MAP_SCENE_PATH := "res://scenes/expedition/ExpeditionMapUI.tscn"
+const BATTLE_SCENE_PATH := "res://scenes/battle/BattleScene.tscn"
+
+var last_battle_node_type: String = ""
+var last_battle_result: Dictionary = {}
+
+func go_to_camp() -> void:
+	get_tree().change_scene_to_file(CAMP_SCENE_PATH)
+
+func go_to_expedition_map() -> void:
+	get_tree().change_scene_to_file(EXPEDITION_MAP_SCENE_PATH)
+
+func go_to_battle(node_type: String) -> void:
+	last_battle_node_type = node_type
+	get_tree().change_scene_to_file(BATTLE_SCENE_PATH)
+
+func return_from_battle(result: Dictionary) -> void:
+	last_battle_result = result.duplicate(true)
+	var game_state := get_node_or_null("/root/GameState")
+	if game_state != null and game_state.expedition_active:
+		go_to_expedition_map()
+		return
+	go_to_camp()

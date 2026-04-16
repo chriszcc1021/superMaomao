@@ -1,0 +1,27 @@
+[gd_scene format=3]
+
+[node name="CampHUD" type="PanelContainer"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 620.0
+offset_bottom = 72.0
+
+[node name="HBox" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="CoinsLabel" type="Label" parent="HBox"]
+layout_mode = 2
+text = "金币: 0"
+
+[node name="CatFoodLabel" type="Label" parent="HBox"]
+layout_mode = 2
+text = "猫粮: 0/0"
+
+[node name="DayLabel" type="Label" parent="HBox"]
+layout_mode = 2
+text = "天数: 1"
+
+[node name="NextDayButton" type="Button" parent="HBox"]
+layout_mode = 2
+text = "过一天"

@@ -1,0 +1,35 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scenes/battle/BattleScene.gd" id="1"]
+[ext_resource type="Script" path="res://scenes/battle/SpawnManager.gd" id="2"]
+[ext_resource type="Script" path="res://scenes/battle/BattleTilemapPlaceholder.gd" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/battle/entities/PlayerCat.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/battle/ui/BattleHUD.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/battle/ui/CardSelectUI.tscn" id="6"]
+
+[node name="BattleScene" type="Node2D"]
+script = ExtResource("1")
+
+[node name="World" type="Node2D" parent="."]
+
+[node name="Tilemap" type="Node2D" parent="World"]
+script = ExtResource("3")
+
+[node name="PlayerCat" parent="World" instance=ExtResource("4")]
+
+[node name="Enemies" type="Node2D" parent="World"]
+
+[node name="Projectiles" type="Node2D" parent="World"]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+enabled = true
+position = Vector2(640, 360)
+
+[node name="SpawnManager" type="Node" parent="."]
+script = ExtResource("2")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="BattleHUD" parent="UI" instance=ExtResource("5")]
+
+[node name="CardSelectUI" parent="UI" instance=ExtResource("6")]

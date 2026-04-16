@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/camp/buildings/BuildingPlaceholder.gd" id="1"]
+
+[node name="Cemetery" type="Node2D"]
+script = ExtResource("1")
+building_id = "cemetery"
+display_name = "墓地"
+fill_color = Color(0.48, 0.48, 0.48, 1)

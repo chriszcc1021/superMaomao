@@ -1,0 +1,92 @@
+# 《喵喵远征》Cursor 开发规则
+
+## 引擎与语言
+- 引擎：Godot 4.x
+- 语言：GDScript（不使用 C#）
+- 目标平台：PC（Windows/Mac）
+
+## 核心原则
+- **不要自己发明架构**，严格按照 ARCHITECTURE.md 的场景结构和脚本职责来
+- **一次只做一件事**，每个功能独立实现，不要跳跃式开发
+- **数据和逻辑分离**，所有游戏数据定义在 Data/ 目录，逻辑写在对应脚本
+- **优先使用信号（Signal）通信**，不要让节点直接引用兄弟节点
+
+## 命名规范
+- 脚本文件：`snake_case.gd`（如 `cat_data.gd`，`game_state.gd`）
+- 场景文件：`PascalCase.tscn`（如 `CampScene.tscn`，`BattleScene.tscn`）
+- 节点名称：`PascalCase`（如 `CatSprite`，`HpBar`）
+- 常量：`ALL_CAPS`（如 `MAX_CAT_SLOTS = 10`）
+- 变量/函数：`snake_case`（如 `current_hp`，`deal_damage()`）
+- 信号：`snake_case`，过去时描述（如 `cat_died`，`level_up`）
+
+## 场景结构规则
+- 营地场景（CampScene）：等距视角（Isometric），启用 Y-Sort
+- 战斗场景（BattleScene）：纯俯视角（Top-Down），标准2D摄像机
+- **两个场景不共用摄像机设置，不混用渲染模式**
+- 全局状态通过 Autoload 管理，不在场景节点间直接传参
+
+## Autoload（全局单例）规则
+- `GameState`：唯一的全局状态持有者，所有持久数据都在这里
+- `SceneManager`：负责场景切换，其他节点不直接调用 get_tree().change_scene()
+- `EventBus`：全局信号总线，跨场景通信只通过 EventBus
+- 禁止在 Autoload 以外的脚本里持有跨场景引用
+
+## 数据定义规则
+- 猫咪数据用 `Resource`（.tres）或字典，不硬编码在脚本里
+- 所有游戏常量（基因池、属性范围、建筑成本等）统一放在 `res://data/constants.gd`
+- 卡牌/技能/基因定义放在对应的 Data 资源文件
+
+## GDScript 代码风格
+```gdscript
+# 类声明放在顶部
+class_name CatData
+extends Resource
+
+# 常量
+const MAX_GENE_SLOTS = 3
+
+# 导出变量（Inspector 可见）
+@export var cat_name: String = ""
+@export var breed: String = "tabby"
+
+# 私有变量用下划线前缀
+var _current_hp: float = 0.0
+
+# 信号声明
+signal hp_changed(new_hp: float)
+signal cat_died
+
+# 生命周期函数顺序：_ready > _process > _physics_process > 其他
+func _ready() -> void:
+    pass
+
+# 函数之间空一行，参数和返回值写类型
+func deal_damage(amount: float) -> void:
+    _current_hp = max(0.0, _current_hp - amount)
+    hp_changed.emit(_current_hp)
+    if _current_hp <= 0.0:
+        cat_died.emit()
+```
+
+## 禁止事项
+- ❌ 不要用 `find_node()`，用 `@onready var` 或 `$NodePath`
+- ❌ 不要在 `_process()` 里做一次性逻辑，用信号或 `call_deferred()`
+- ❌ 不要硬编码路径字符串，用常量或 @export
+- ❌ 不要一个脚本超过 300 行，超了就拆分
+- ❌ 不要跳过功能直接写 UI，先实现数据逻辑，再加视觉表现
+
+## 开发顺序（严格按此顺序）
+1. 数据层：CatData、GeneData、CardData Resource 定义
+2. GameState Autoload：营地状态、猫咪列表、资源数值
+3. 营地场景骨架：建筑摆放、猫咪走动（占位色块）
+4. 繁育系统：breed() 函数、基因遗传逻辑
+5. 战斗场景骨架：猫移动、自动攻击、敌人生成
+6. 卡牌系统：升级选卡、卡牌效果
+7. 远征地图：节点选择、层数推进
+8. UI 完善：所有界面视觉实现
+9. 音效/动画：最后加
+
+## 参考设计文档
+- 游戏设计文档：`游戏设计文档-v3.5.md`
+- 场景架构：`ARCHITECTURE.md`
+- 遇到设计文档没写的内容，先问清楚再实现，不要自己决定
