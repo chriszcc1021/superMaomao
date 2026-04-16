@@ -14,6 +14,7 @@ signal died(enemy_type: String, fish_drop: int, world_position: Vector2)
 @export var tint_color: Color = Color(0.85, 0.4, 0.25, 1.0)
 
 var current_hp: float = 30.0
+var show_hp_bar: bool = false  # 只有精英怪和 Boss 显示血条
 var _target: Node2D = null
 var _attack_cd: float = 0.0
 
@@ -28,6 +29,7 @@ func setup(definition: Dictionary, player_target: Node2D) -> void:
 	damage = float(definition.get("damage", damage))
 	move_speed = float(definition.get("move_speed", move_speed))
 	fish_drop = int(definition.get("fish_drop", fish_drop))
+	show_hp_bar = bool(definition.get("show_hp_bar", false))
 	_target = player_target
 	current_hp = max_hp
 	tint_color = _resolve_color(enemy_type)
@@ -49,6 +51,7 @@ func _physics_process(delta: float) -> void:
 
 func take_damage(amount: float) -> void:
 	current_hp -= amount
+	queue_redraw()
 	if current_hp <= 0.0:
 		died.emit(enemy_type, fish_drop, global_position)
 		queue_free()
@@ -57,9 +60,11 @@ func _draw() -> void:
 	draw_circle(Vector2.ZERO, 12.0, tint_color)
 	draw_circle(Vector2(-4.0, -2.0), 2.0, Color.BLACK)
 	draw_circle(Vector2(4.0, -2.0), 2.0, Color.BLACK)
-	var hp_ratio: float = clamp(current_hp / max(max_hp, 1.0), 0.0, 1.0)
-	draw_rect(Rect2(Vector2(-14, -20), Vector2(28, 4)), Color(0.15, 0.15, 0.15), true)
-	draw_rect(Rect2(Vector2(-14, -20), Vector2(28 * hp_ratio, 4)), Color(0.25, 0.85, 0.25), true)
+	# 只有精英怪和 Boss 才显示血条
+	if show_hp_bar:
+		var hp_ratio: float = clamp(current_hp / max(max_hp, 1.0), 0.0, 1.0)
+		draw_rect(Rect2(Vector2(-14, -20), Vector2(28, 4)), Color(0.15, 0.15, 0.15), true)
+		draw_rect(Rect2(Vector2(-14, -20), Vector2(28 * hp_ratio, 4)), Color(0.25, 0.85, 0.25), true)
 
 func _resolve_color(id: String) -> Color:
 	match id:

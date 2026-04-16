@@ -29,13 +29,15 @@ static func get_enemy_definitions() -> Dictionary:
 			"hp": 300.0,
 			"damage": 20.0,
 			"move_speed": 70.0,
-			"fish_drop": 20
+			"fish_drop": 20,
+			"show_hp_bar": true
 		},
 		"boss_gorilla_king": {
 			"display_name": "猩猩大王",
 			"hp": 2000.0,
 			"damage": 30.0,
 			"move_speed": 60.0,
-			"fish_drop": 50
+			"fish_drop": 50,
+			"show_hp_bar": true
 		}
 	}

@@ -58,6 +58,9 @@ func _produce_resources(game_state: Node) -> void:
 		var food_workers: int = min(workers, 3)
 		var food_gain: int = int(GameConstants.FOOD_FARM_OUTPUT_BY_WORKERS.get(food_workers, 3))
 		game_state.add_cat_food(food_gain)
+	else:
+		# 没有猫粮田时提供基础产出，避免前期断粮
+		game_state.add_cat_food(3)
 	if game_state.has_building("gold_mine"):
 		var gold_workers: int = min(max(workers - 3, 0), 2)
 		var gold_gain: int = int(GameConstants.GOLD_MINE_OUTPUT_BY_WORKERS.get(gold_workers, 2))

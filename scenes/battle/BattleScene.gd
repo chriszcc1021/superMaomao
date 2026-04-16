@@ -48,6 +48,8 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if _battle_over or _battle_paused:
 		return
+	# 摄像机跟随玩家
+	_camera.global_position = _player_cat.global_position
 	if _battle_time_left > 0.0:
 		_battle_time_left = max(_battle_time_left - delta, 0.0)
 		if _battle_time_left <= 0.0:
