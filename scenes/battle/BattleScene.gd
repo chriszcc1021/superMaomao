@@ -5,6 +5,7 @@ const CatData := preload("res://resources/CatData.gd")
 const CardData := preload("res://resources/CardData.gd")
 const WeaponCards := preload("res://data/cards/weapon_cards.gd")
 const BuffCards := preload("res://data/cards/buff_cards.gd")
+const FishItem := preload("res://scenes/battle/entities/FishItem.gd")
 
 @onready var _player_cat: Node2D = $World/PlayerCat
 @onready var _enemies_root: Node2D = $World/Enemies
@@ -101,8 +102,18 @@ func _resolve_selected_cat() -> CatData:
 		return game_state.cats[0]
 	return CatData.new()
 
-func _on_enemy_defeated(_enemy_type: String, fish_drop: int, _pos: Vector2) -> void:
-	_gain_fish(fish_drop)
+func _on_enemy_defeated(enemy_type: String, fish_drop: int, pos: Vector2) -> void:
+	# 在死亡位置生成小鱼干掉落物，需要玩家走过去拾取
+	if fish_drop > 0:
+		var item := FishItem.new()
+		item.global_position = pos
+		item.amount = fish_drop
+		item._player = _player_cat
+		item.collected.connect(_on_fish_collected)
+		_projectiles_root.add_child(item)  # 复用 projectiles_root 层
+
+func _on_fish_collected(amount: int) -> void:
+	_gain_fish(amount)
 
 func _on_elite_spawned(enemy: Node) -> void:
 	_elite_target = enemy
@@ -134,9 +145,16 @@ func _pause_battle_for_card_select(choices: Array[CardData], first_level_up: boo
 	_battle_paused = true
 	_player_cat.set_battle_paused(true)
 	_spawn_manager.set_battle_paused(true)
+	# 冻结场上所有已有敌人
+	_set_enemies_paused(true)
 	var title := "首次升级" if first_level_up else "升级选卡"
 	var desc := "Lv1→2 仅出现武器卡。" if first_level_up else "请选择一张卡牌。"
 	_card_select.show_choices(choices, title, desc)
+
+func _set_enemies_paused(paused: bool) -> void:
+	for child: Node in _enemies_root.get_children():
+		if child.has_method("set_battle_paused"):
+			child.set_battle_paused(paused)
 
 func _on_card_chosen(card: CardData) -> void:
 	_apply_card(card)
@@ -147,6 +165,8 @@ func _on_card_chosen(card: CardData) -> void:
 	_battle_paused = false
 	_player_cat.set_battle_paused(false)
 	_spawn_manager.set_battle_paused(false)
+	# 恢复场上所有敌人
+	_set_enemies_paused(false)
 	_refresh_hud()
 
 func _apply_card(card: CardData) -> void:

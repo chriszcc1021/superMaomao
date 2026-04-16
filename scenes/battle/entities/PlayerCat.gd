@@ -32,8 +32,15 @@ var _buff_bonus := {
 	"attack": 0.0,
 	"move_speed": 0.0,
 	"range": 0.0,
-	"crit_rate": 0.0
+	"crit_rate": 0.0,
+	"pickup_radius": 0.0
 }
+
+# 拾取相关
+const BASE_PICKUP_MAGNET_RADIUS := 80.0
+const BASE_COLLECT_RADIUS := 20.0
+var pickup_magnet_radius: float = BASE_PICKUP_MAGNET_RADIUS
+var collect_radius: float = BASE_COLLECT_RADIUS
 
 var _enemies_root: Node2D = null
 
@@ -124,6 +131,7 @@ func _recalculate_runtime_stats() -> void:
 	attack_range = base_range * (1.0 + float(_buff_bonus["range"]))
 	crit_rate = base_crit_rate + float(_buff_bonus["crit_rate"])
 	crit_multiplier = base_crit_multiplier
+	pickup_magnet_radius = BASE_PICKUP_MAGNET_RADIUS + float(_buff_bonus["pickup_radius"])
 
 func _direction_to_nearest_enemy() -> Vector2:
 	if _enemies_root == null:

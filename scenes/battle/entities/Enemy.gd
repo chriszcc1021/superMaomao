@@ -36,6 +36,9 @@ func setup(definition: Dictionary, player_target: Node2D) -> void:
 	tint_color = _resolve_color(enemy_type)
 	queue_redraw()
 
+func set_battle_paused(paused: bool) -> void:
+	set_physics_process(not paused)
+
 func _physics_process(delta: float) -> void:
 	_attack_cd = max(_attack_cd - delta, 0.0)
 	if _target == null or not is_instance_valid(_target):
