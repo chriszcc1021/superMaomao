@@ -34,6 +34,7 @@ var expedition_layer: int = 0
 var expedition_battle_wins: int = 0
 var expedition_buffs: Array = []
 var expedition_active_genes: Array[String] = []
+var expedition_shop_cards: Array = []  # 远征商店购买的卡牌定义（Dictionary数组）
 
 var buildings_built: Dictionary = DEFAULT_BUILDINGS_BUILT.duplicate(true)
 var cat_house_slots: int = GameConstants.STARTING_CAT_HOUSE_SLOTS
@@ -51,6 +52,7 @@ func reset_state() -> void:
 	expedition_battle_wins = 0
 	expedition_buffs.clear()
 	expedition_active_genes.clear()
+	expedition_shop_cards.clear()
 	buildings_built = DEFAULT_BUILDINGS_BUILT.duplicate(true)
 	cat_house_slots = GameConstants.STARTING_CAT_HOUSE_SLOTS
 	coins_changed.emit(coins)
@@ -170,6 +172,7 @@ func start_expedition(cat: CatData) -> bool:
 	expedition_battle_wins = 0
 	expedition_buffs.clear()
 	expedition_active_genes.clear()
+	expedition_shop_cards.clear()
 	cat.status = GameConstants.LIFECYCLE_STATUS_EXPEDITION
 	return true
 
@@ -199,3 +202,4 @@ func clear_expedition_state() -> void:
 	expedition_battle_wins = 0
 	expedition_buffs.clear()
 	expedition_active_genes.clear()
+	expedition_shop_cards.clear()

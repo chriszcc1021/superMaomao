@@ -3,15 +3,20 @@ extends Node
 const CAMP_SCENE_PATH := "res://scenes/camp/CampScene.tscn"
 const EXPEDITION_MAP_SCENE_PATH := "res://scenes/expedition/ExpeditionMapUI.tscn"
 const BATTLE_SCENE_PATH := "res://scenes/battle/BattleScene.tscn"
+const SHOP_SCENE_PATH := "res://scenes/expedition/ShopScene.tscn"
 
 var last_battle_node_type: String = ""
 var last_battle_result: Dictionary = {}
+var returned_from_shop: bool = false
 
 func go_to_camp() -> void:
 	get_tree().change_scene_to_file(CAMP_SCENE_PATH)
 
 func go_to_expedition_map() -> void:
 	get_tree().change_scene_to_file(EXPEDITION_MAP_SCENE_PATH)
+
+func go_to_shop() -> void:
+	get_tree().change_scene_to_file(SHOP_SCENE_PATH)
 
 func go_to_battle(node_type: String) -> void:
 	last_battle_node_type = node_type
@@ -24,3 +29,7 @@ func return_from_battle(result: Dictionary) -> void:
 		go_to_expedition_map()
 		return
 	go_to_camp()
+
+func return_from_shop() -> void:
+	returned_from_shop = true
+	go_to_expedition_map()

@@ -124,13 +124,14 @@ func _refresh_cat_nodes() -> void:
 		var cat_sprite: Node2D = CatSpriteScene.instantiate()
 		cat_sprite.global_position = _random_cat_spawn_position()
 		cat_sprite.call("setup", cat)
-		# 如果猫被分配了建筑，设置锚点
 		var assigned: String = str(cat.assigned_building)
 		if not assigned.is_empty() and BUILDING_LAYOUT.has(assigned):
 			var anchor: Vector2 = BUILDING_LAYOUT[assigned]
-			# 在建筑附近随机偏移，避免叠在一起
 			anchor += Vector2(randf_range(-20.0, 20.0), randf_range(-15.0, 15.0))
 			cat_sprite.call("set_building_anchor", assigned, anchor)
+		# 连接拖拽信号
+		if cat_sprite.has_signal("drop_requested"):
+			cat_sprite.connect("drop_requested", _on_cat_drop_requested)
 		_cats_root.add_child(cat_sprite)
 
 func _random_cat_spawn_position() -> Vector2:
@@ -208,7 +209,58 @@ func _set_sidebar_text(text: String) -> void:
 		if _cat_list_text != null:
 		_cat_list_text.text = text
 
-func _on_next_day_pressed() -> void:
+func _on_cat_drop_requested(cat: CatData, world_pos: Vector2) -> void:
+	# 找最近的建筑（60px阈值）
+	var nearest_id := ""
+	var nearest_dist := 70.0
+	for building_id: String in BUILDING_LAYOUT.keys():
+		if not GameState.has_building(building_id):
+			continue
+		var dist := world_pos.distance_to(BUILDING_LAYOUT[building_id])
+		if dist < nearest_dist:
+			nearest_dist = dist
+			nearest_id = building_id
+
+	if nearest_id.is_empty():
+		# 没有建筑附近 → 自由漫游
+		cat.assigned_building = ""
+		_refresh_cat_nodes()
+		return
+
+	if cat.assigned_building == nearest_id:
+		# 放在已分配建筑 → 取消分配
+		cat.assigned_building = ""
+		_refresh_cat_nodes()
+		return
+
+	var cap := _get_building_worker_cap(nearest_id)
+	var current := _count_assigned_cats(nearest_id)
+	if current >= cap:
+		# 已满员 → 回旧建筑（如旧建筑仍有空位），否则漫游
+		var old_id := str(cat.assigned_building)
+		if not old_id.is_empty() and old_id != nearest_id:
+			var old_cap := _get_building_worker_cap(old_id)
+			# 算旧建筑中不含自己的数量
+			var old_count := _count_assigned_cats(old_id) - 1
+			if old_count < old_cap:
+				_refresh_cat_nodes()
+				return  # 猫还在旧建筑，不变
+		cat.assigned_building = ""
+		_refresh_cat_nodes()
+		return
+
+	# 从旧建筑解绑，分配到新建筑
+	cat.assigned_building = nearest_id
+	_refresh_cat_nodes()
+
+func _get_building_worker_cap(building_id: String) -> int:
+	if building_id == "fortune_cat":
+		var level := GameState.get_building_level("fortune_cat")
+		return int(GameConstants.FORTUNE_CAT_MAX_WORKERS_BY_LEVEL.get(level, 1))
+	var base_cap = GameConstants.BUILDING_WORKER_CAP.get(building_id, null)
+	if base_cap != null:
+		return int(base_cap)
+	return 999  # 无上限（猫窝、粮仓、墓地等）
 	_day_manager.advance_day(GameState, EventBus)
 	_refresh_all()
 

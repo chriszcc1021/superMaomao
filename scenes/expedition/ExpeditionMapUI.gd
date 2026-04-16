@@ -19,6 +19,7 @@ func _ready() -> void:
 	_back_button.pressed.connect(_on_back_pressed)
 	_refresh_cat_options()
 	_process_returned_battle()
+	_process_returned_shop()
 	_refresh_view()
 
 func _refresh_cat_options() -> void:
@@ -60,6 +61,14 @@ func _on_back_pressed() -> void:
 	var scene_manager := _get_scene_manager()
 	if scene_manager != null:
 		scene_manager.go_to_camp()
+
+func _process_returned_shop() -> void:
+	var sm := _get_scene_manager()
+	if sm == null or not bool(sm.get("returned_from_shop")):
+		return
+	sm.set("returned_from_shop", false)
+	_status_label.text = "商店购物完成，继续前进！"
+	_generate_nodes_for_current_layer()
 
 func _process_returned_battle() -> void:
 	var result := _system.process_returned_battle(_get_scene_manager(), _get_game_state())
@@ -127,8 +136,12 @@ func _on_node_pressed(idx: int) -> void:
 			_status_label.text = _system.resolve_question_event(game_state)
 			_advance_non_battle_layer()
 		"shop":
-			_status_label.text = _system.resolve_shop_event()
-			_advance_non_battle_layer()
+			var scene_manager := _get_scene_manager()
+			if scene_manager != null:
+				scene_manager.go_to_shop()
+			else:
+				_status_label.text = "商店暂不可用"
+				_advance_non_battle_layer()
 
 func _advance_non_battle_layer() -> void:
 	var game_state := _get_game_state()
