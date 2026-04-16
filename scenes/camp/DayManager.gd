@@ -18,12 +18,17 @@ func advance_day(game_state: Node, event_bus: Node) -> void:
 func _consume_cat_food(game_state: Node) -> void:
 	var total_cost: int = 0
 	for cat: CatData in game_state.get_living_cats():
+		var base_cost := 0
 		if cat.age_days < GameConstants.KITTEN_DAYS:
-			total_cost += GameConstants.FOOD_CONSUMPTION_KITTEN
+			base_cost = GameConstants.FOOD_CONSUMPTION_KITTEN
 		elif cat.status == GameConstants.LIFECYCLE_STATUS_ELDER:
-			total_cost += GameConstants.FOOD_CONSUMPTION_ELDER
+			base_cost = GameConstants.FOOD_CONSUMPTION_ELDER
 		else:
-			total_cost += GameConstants.FOOD_CONSUMPTION_ADULT
+			base_cost = GameConstants.FOOD_CONSUMPTION_ADULT
+		# big_belly：自身猫粮消耗-25%
+		if _cat_has_gene(cat, "big_belly"):
+			base_cost = int(ceil(base_cost * 0.75))
+		total_cost += base_cost
 	if total_cost <= 0:
 		return
 	if game_state.consume_cat_food(total_cost):
@@ -53,27 +58,94 @@ func _check_lifecycle(game_state: Node) -> void:
 			game_state.mark_cat_dead(cat.id)
 
 func _produce_resources(game_state: Node) -> void:
+	# community_planner：全局产出加成
+	var community_bonus := _calc_community_planner_bonus(game_state)
 	var workers: int = _count_available_workers(game_state)
+
 	if game_state.has_building("food_farm"):
 		var food_workers: int = min(workers, 3)
 		var food_gain: int = int(GameConstants.FOOD_FARM_OUTPUT_BY_WORKERS.get(food_workers, 3))
+		# hard_worker 加成（猫粮田中有hard_worker猫）
+		food_gain = _apply_worker_gene_bonus(game_state, "food_farm", food_gain)
+		food_gain = int(food_gain * (1.0 + community_bonus))
 		game_state.add_cat_food(food_gain)
 	else:
-		# 没有猫粮田时提供基础产出，避免前期断粮
 		game_state.add_cat_food(3)
+
 	if game_state.has_building("gold_mine"):
 		var gold_workers: int = min(max(workers - 3, 0), 2)
 		var gold_gain: int = int(GameConstants.GOLD_MINE_OUTPUT_BY_WORKERS.get(gold_workers, 2))
+		# hard_worker + walnut_cracker 加成
+		gold_gain = _apply_worker_gene_bonus(game_state, "gold_mine", gold_gain)
+		gold_gain = int(gold_gain * (1.0 + community_bonus))
 		game_state.add_coins(gold_gain)
-	# 招财猫神龛：按分配到此建筑的猫数量产金
+
 	if game_state.has_building("fortune_cat"):
 		var fortune_workers: int = _count_workers_at_building(game_state, "fortune_cat")
 		if fortune_workers > 0:
 			var level: int = int(game_state.get_building_level("fortune_cat"))
 			var per_worker: int = int(GameConstants.FORTUNE_CAT_OUTPUT_PER_WORKER.get(level, 15))
-			game_state.add_coins(per_worker * fortune_workers)
+			var fortune_gain := per_worker * fortune_workers
+			fortune_gain = _apply_worker_gene_bonus(game_state, "fortune_cat", fortune_gain)
+			fortune_gain = int(fortune_gain * (1.0 + community_bonus))
+			game_state.add_coins(fortune_gain)
+
+	# golden_paw：每天额外产金
+	for cat: CatData in game_state.get_living_cats():
+		if _cat_has_gene(cat, "golden_paw"):
+			game_state.add_coins(8)
+
+	# 医院：mini_nurse 治疗效果
+	_process_hospital_healing(game_state)
+
 	# 建筑工作给猫加 XP
 	_grant_building_xp(game_state)
+
+func _apply_worker_gene_bonus(game_state: Node, building_id: String, base_amount: int) -> int:
+	var mult := 1.0
+	for cat: CatData in game_state.get_living_cats():
+		if str(cat.assigned_building) != building_id:
+			continue
+		if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
+			continue
+		if _cat_has_gene(cat, "hard_worker"):
+			mult += 0.20
+		if building_id == "gold_mine" and _cat_has_gene(cat, "walnut_cracker"):
+			mult += 0.30
+	return int(base_amount * mult)
+
+func _calc_community_planner_bonus(game_state: Node) -> float:
+	var planner_present := false
+	for cat: CatData in game_state.get_living_cats():
+		if _cat_has_gene(cat, "community_planner"):
+			planner_present = true
+			break
+	if not planner_present:
+		return 0.0
+	# 统计所有在岗的猫（最多5只加成）
+	var worker_count := 0
+	for cat: CatData in game_state.get_living_cats():
+		if not str(cat.assigned_building).is_empty() and cat.status != GameConstants.LIFECYCLE_STATUS_EXPEDITION:
+			worker_count += 1
+	return min(worker_count, 5) * 0.02
+
+func _process_hospital_healing(game_state: Node) -> void:
+	if not game_state.has_building("hospital"):
+		return
+	var heal_rate := 1.0
+	# mini_nurse 加成
+	var hospital_workers_with_mini_nurse := 0
+	for cat: CatData in game_state.get_living_cats():
+		if str(cat.assigned_building) == "hospital" and _cat_has_gene(cat, "mini_nurse"):
+			hospital_workers_with_mini_nurse += 1
+	if hospital_workers_with_mini_nurse > 0:
+		heal_rate = 1.5
+	# 治疗在医院里的病猫
+	for cat: CatData in game_state.get_living_cats():
+		if cat.health == GameConstants.HEALTH_STATE_SICK and heal_rate >= 1.5:
+			cat.health = GameConstants.HEALTH_STATE_HEALTHY
+		elif cat.health == GameConstants.HEALTH_STATE_CRITICAL:
+			cat.health = GameConstants.HEALTH_STATE_SICK
 
 func _grant_building_xp(game_state: Node) -> void:
 	for cat: CatData in game_state.get_living_cats():
@@ -132,6 +204,11 @@ func _roll_stray_cat(game_state: Node, event_bus: Node) -> void:
 	var chance := GameConstants.STRAY_CAT_DAILY_CHANCE
 	if game_state.has_building("heart_cat_house"):
 		chance = min(1.0, chance + GameConstants.HEART_CAT_HOUSE_STRAY_CHANCE_BONUS)
+	# lucky_cat：任一猫有此基因，流浪猫来访概率+15%
+	for cat: CatData in game_state.get_living_cats():
+		if _cat_has_gene(cat, "lucky_cat"):
+			chance = min(1.0, chance + 0.15)
+			break
 	if randf() > chance:
 		return
 	var stray_cat := CatFactory.create_random_stray_cat("stray", "流浪猫")
@@ -139,3 +216,6 @@ func _roll_stray_cat(game_state: Node, event_bus: Node) -> void:
 		return
 	if event_bus != null:
 		event_bus.stray_cat_arrived.emit(stray_cat)
+
+func _cat_has_gene(cat: CatData, gene_id: String) -> bool:
+	return gene_id in [str(cat.gene_slot_1), str(cat.gene_slot_2), str(cat.gene_slot_3)]

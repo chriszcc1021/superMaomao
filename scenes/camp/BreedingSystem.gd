@@ -25,9 +25,13 @@ func breed(father: CatData, mother: CatData, child_breed: String, child_professi
 	offspring.gene_pattern = _inherit_appearance_gene("pattern", father.gene_pattern, mother.gene_pattern)
 	offspring.gene_tail = _inherit_appearance_gene("tail", father.gene_tail, mother.gene_tail)
 
-	offspring.gene_slot_1 = _inherit_special_gene(father.gene_slot_1, mother.gene_slot_1)
-	offspring.gene_slot_2 = _inherit_special_gene(father.gene_slot_2, mother.gene_slot_2)
-	offspring.gene_slot_3 = _inherit_special_gene(father.gene_slot_3, mother.gene_slot_3)
+	# breeding_expert：父母任一有此基因，特殊基因继承率+10%
+	var expert_bonus: float = 0.0
+	if _cat_has_gene(father, "breeding_expert") or _cat_has_gene(mother, "breeding_expert"):
+		expert_bonus = 0.10
+	offspring.gene_slot_1 = _inherit_special_gene(father.gene_slot_1, mother.gene_slot_1, expert_bonus)
+	offspring.gene_slot_2 = _inherit_special_gene(father.gene_slot_2, mother.gene_slot_2, expert_bonus)
+	offspring.gene_slot_3 = _inherit_special_gene(father.gene_slot_3, mother.gene_slot_3, expert_bonus)
 	offspring.calculate_stats()
 	return offspring
 
@@ -74,12 +78,16 @@ func _inherit_appearance_gene(slot_key: String, father_value: String, mother_val
 		return father_value
 	return str(options[randi() % options.size()])
 
-func _inherit_special_gene(father_gene: String, mother_gene: String) -> String:
+func _inherit_special_gene(father_gene: String, mother_gene: String, expert_bonus: float = 0.0) -> String:
+	var inherit_chance := GameConstants.BREEDING_GENE_INHERIT_PARENT + GameConstants.BREEDING_GENE_INHERIT_OTHER_PARENT + expert_bonus
 	var roll := randf()
 	if roll < GameConstants.BREEDING_GENE_INHERIT_PARENT:
 		return father_gene
-	if roll < GameConstants.BREEDING_GENE_INHERIT_PARENT + GameConstants.BREEDING_GENE_INHERIT_OTHER_PARENT:
+	if roll < inherit_chance:
 		return mother_gene
 	if GameConstants.ALL_SPECIAL_GENE_POOL.is_empty():
 		return ""
 	return str(GameConstants.ALL_SPECIAL_GENE_POOL[randi() % GameConstants.ALL_SPECIAL_GENE_POOL.size()])
+
+func _cat_has_gene(cat: CatData, gene_id: String) -> bool:
+	return gene_id in [str(cat.gene_slot_1), str(cat.gene_slot_2), str(cat.gene_slot_3)]

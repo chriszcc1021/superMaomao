@@ -101,6 +101,23 @@ func _setup_player() -> void:
 	var weapon_system: Node = _player_cat.get_weapon_system()
 	weapon_system.set_projectile_root(_projectiles_root)
 	_camera.position = _player_cat.global_position
+	# 读取猫的基因槽，激活技能
+	_setup_cat_genes()
+
+func _setup_cat_genes() -> void:
+	if _selected_cat == null:
+		return
+	var genes: Array[String] = []
+	for slot_gene: String in [_selected_cat.gene_slot_1, _selected_cat.gene_slot_2, _selected_cat.gene_slot_3]:
+		if not slot_gene.is_empty():
+			genes.append(slot_gene)
+	if not genes.is_empty():
+		_player_cat.setup_genes(genes)
+
+func _cat_has_gene(gene_id: String) -> bool:
+	if _selected_cat == null:
+		return false
+	return gene_id in [_selected_cat.gene_slot_1, _selected_cat.gene_slot_2, _selected_cat.gene_slot_3]
 
 func _setup_spawn() -> void:
 	_spawn_manager.configure(_node_type, _enemies_root, _player_cat)
@@ -136,14 +153,37 @@ func _resolve_selected_cat() -> CatData:
 	return CatData.new()
 
 func _on_enemy_defeated(enemy_type: String, fish_drop: int, pos: Vector2) -> void:
-	# 在死亡位置生成小鱼干掉落物，需要玩家走过去拾取
+	# 生成小鱼干掉落物
 	if fish_drop > 0:
 		var item := FishItem.new()
 		item.global_position = pos
 		item.amount = fish_drop
 		item._player = _player_cat
 		item.collected.connect(_on_fish_collected)
-		_projectiles_root.add_child(item)  # 复用 projectiles_root 层
+		_projectiles_root.add_child(item)
+	# battle_frenzy：击杀触发攻速叠层
+	if _player_cat != null and _player_cat.has_method("register_kill"):
+		_player_cat.register_kill()
+	# cleanup_blast：击杀产生爆炸
+	if _cat_has_gene("cleanup_blast") and _player_cat != null:
+		_spawn_cleanup_blast(pos)
+
+func _spawn_cleanup_blast(center: Vector2) -> void:
+	var blast_radius := 80.0
+	var blast_damage := float(_player_cat.get("attack")) * 0.5
+	for enemy: Node in _enemies_root.get_children():
+		if enemy is Node2D:
+			var dist := center.distance_to((enemy as Node2D).global_position)
+			if dist <= blast_radius and enemy.has_method("take_damage"):
+				enemy.call("take_damage", blast_damage)
+	# 简单爆炸视觉：临时颜色圆圈（Node2D + _draw）
+	var flash := Node2D.new()
+	flash.global_position = center
+	_enemies_root.get_parent().add_child(flash)
+	flash.set_script(null)
+	# 用 create_tween 延迟删除
+	var tw := flash.create_tween()
+	tw.tween_callback(flash.queue_free).set_delay(0.15)
 
 func _on_fish_collected(amount: int) -> void:
 	_gain_fish(amount)
@@ -199,6 +239,9 @@ func _set_enemies_paused(paused: bool) -> void:
 
 func _on_card_chosen(card: CardData) -> void:
 	_apply_card(card)
+	# resonance_stack：每选一张卡，所有已持有buff卡效果+5%
+	if _cat_has_gene("resonance_stack"):
+		_apply_resonance_boost()
 	var event_bus := _get_event_bus()
 	if event_bus != null:
 		event_bus.card_selected.emit(card)
@@ -209,6 +252,12 @@ func _on_card_chosen(card: CardData) -> void:
 	# 恢复场上所有敌人
 	_set_enemies_paused(false)
 	_refresh_hud()
+
+func _apply_resonance_boost() -> void:
+	for card: CardData in _cards:
+		if str(card.card_type) == "buff":
+			for i: int in card.values.size():
+				card.values[i] = float(card.values[i]) * 1.05
 
 func _apply_card(card: CardData) -> void:
 	var existing: CardData = _card_by_id.get(card.id, null)
