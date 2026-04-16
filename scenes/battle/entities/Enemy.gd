@@ -2,6 +2,7 @@ class_name Enemy
 extends CharacterBody2D
 
 const GameConstants := preload("res://data/constants.gd")
+const FloatingText := preload("res://scenes/common/FloatingText.gd")
 
 signal died(enemy_type: String, fish_drop: int, world_position: Vector2)
 
@@ -52,6 +53,9 @@ func _physics_process(delta: float) -> void:
 func take_damage(amount: float) -> void:
 	current_hp -= amount
 	queue_redraw()
+	# 浮动伤害数字
+	if get_parent() != null:
+		FloatingText.spawn(get_parent(), global_position + Vector2(randf_range(-8.0, 8.0), -16.0), "-%d" % int(amount), Color(1.0, 0.85, 0.2, 1.0))
 	if current_hp <= 0.0:
 		died.emit(enemy_type, fish_drop, global_position)
 		queue_free()

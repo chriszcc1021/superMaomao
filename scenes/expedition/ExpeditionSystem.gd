@@ -57,10 +57,17 @@ func generate_nodes_for_current_layer(game_state: Node) -> Array[Dictionary]:
 	if layer >= GameConstants.EXPEDITION_BOSS_LAYER:
 		nodes.append({"type": "battle_boss"})
 		return nodes
-	var count := randi_range(GameConstants.EXPEDITION_NODE_COUNT_MIN, GameConstants.EXPEDITION_NODE_COUNT_MAX)
+	# 固定生成2个节点，玩家二选一
 	var probs: Dictionary = GameConstants.EXPEDITION_NODE_PROBABILITIES.get(layer, {})
-	for _i in count:
-		nodes.append({"type": _weighted_pick(probs, NODE_PICK_ORDER, "battle_normal")})
+	while nodes.size() < 2:
+		var picked: String = _weighted_pick(probs, NODE_PICK_ORDER, "battle_normal")
+		# 避免两个节点完全相同（至少尝试差异化，最多3次）
+		if nodes.size() == 1 and str(nodes[0].get("type", "")) == picked:
+			var attempts := 0
+			while attempts < 3 and str(nodes[0].get("type", "")) == picked:
+				picked = _weighted_pick(probs, NODE_PICK_ORDER, "battle_normal")
+				attempts += 1
+		nodes.append({"type": picked})
 	return nodes
 
 func resolve_question_event(game_state: Node) -> String:

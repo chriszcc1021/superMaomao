@@ -97,10 +97,12 @@ func _refresh_view() -> void:
 
 func _refresh_nodes() -> void:
 	_clear_nodes()
-	for idx in _current_nodes.size():
+	# 固定二选一：最多显示2个节点按钮
+	var display_count := mini(_current_nodes.size(), 2)
+	for idx in display_count:
 		var node_data: Dictionary = _current_nodes[idx]
 		var button := Button.new()
-		button.custom_minimum_size = Vector2(220.0, 110.0)
+		button.custom_minimum_size = Vector2(260.0, 120.0)
 		button.text = str(node_data.get("label", "节点"))
 		button.pressed.connect(_on_node_pressed.bind(idx))
 		_node_row.add_child(button)

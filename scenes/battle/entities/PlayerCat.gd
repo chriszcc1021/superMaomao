@@ -2,6 +2,7 @@ class_name PlayerCat
 extends CharacterBody2D
 
 const CatData := preload("res://resources/CatData.gd")
+const FloatingText := preload("res://scenes/common/FloatingText.gd")
 
 signal hp_changed(current_hp: float, max_hp: float)
 signal died
@@ -74,6 +75,9 @@ func take_damage(amount: float) -> void:
 	current_hp = max(current_hp - amount, 0.0)
 	hp_changed.emit(current_hp, max_hp)
 	queue_redraw()
+	# 浮动受伤数字（红色）
+	if get_parent() != null:
+		FloatingText.spawn(get_parent(), global_position + Vector2(randf_range(-6.0, 6.0), -20.0), "-%d" % int(amount), Color(0.95, 0.2, 0.2, 1.0))
 	if current_hp <= 0.0:
 		died.emit()
 
