@@ -13,7 +13,11 @@ const GameConstants := preload("res://data/constants.gd")
 @export var age_days: int = 0
 @export var has_expeditioned: bool = false
 @export var breed_count: int = 0
-@export var assigned_building: String = ""  # 分配的建筑，空字符串=自由漫游
+@export var assigned_building: String = ""
+
+# 永久等级系统（全游戏唯一经验池）
+@export var level: int = 1
+@export var xp: int = 0  # 当前等级内已积累 XP（满则升级归零）
 
 @export var gene_head: String = "round"
 @export var gene_ear: String = "upright"

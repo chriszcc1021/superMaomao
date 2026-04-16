@@ -21,23 +21,23 @@ var _battle_over: bool = false
 var _battle_paused: bool = false
 var _battle_time_left: float = GameConstants.BATTLE_NORMAL_DURATION
 
+# 等级系统：直接映射猫的永久等级
 var _level: int = 1
-var _fish: int = 0
-var _xp_to_next: int = int(GameConstants.LEVEL_UP_XP[0])
+var _fish: int = 0        # 当前等级内已积累 XP
+var _xp_to_next: int = 0
 var _cards: Array[CardData] = []
 var _card_by_id: Dictionary = {}
 var _card_meta_by_id: Dictionary = {}
-var _active_genes_gained: Array[String] = []
-var _active_gene_level_grants: Dictionary = {}
-var _pending_gene_id: String = ""  # 待弹窗确认的基因
+var _active_genes_gained: Array[String] = []  # 本场战斗中写入基因槽的基因
 
 var _elite_target: Node = null
 var _boss_target: Node = null
 
-# 基因弹窗（动态创建）
+# 基因选择弹窗
 var _gene_popup: Control = null
 var _pending_card_choices: Array[CardData] = []
 var _pending_first_level_up: bool = false
+var _pending_gene_to_add: String = ""  # 玩家选好的基因，等待写入槽
 
 func _ready() -> void:
 	randomize()
@@ -115,6 +115,9 @@ func _set_timer_by_node_type() -> void:
 			_battle_time_left = -1.0
 		_:
 			_battle_time_left = GameConstants.BATTLE_NORMAL_DURATION
+	# 从猫的持久等级恢复
+	_level = max(1, int(_selected_cat.level)) if _selected_cat != null else 1
+	_fish = int(_selected_cat.xp) if _selected_cat != null else 0
 	_xp_to_next = _xp_required_for_level(_level)
 
 func _resolve_selected_cat() -> CatData:
@@ -149,26 +152,29 @@ func _on_boss_spawned(enemy: Node) -> void:
 
 func _gain_fish(amount: int) -> void:
 	_fish += amount
-	while _fish >= _xp_to_next:
+	# 检查是否升级（支持连续多级）
+	while _level < GameConstants.CAT_LEVEL_CAP and _fish >= _xp_to_next:
 		_fish -= _xp_to_next
 		_level += 1
 		_xp_to_next = _xp_required_for_level(_level)
 		_on_level_up()
+		# 升级后如果弹窗出现，中断循环（等玩家操作完再继续）
+		if _battle_paused:
+			break
 	_refresh_hud()
 
 func _on_level_up() -> void:
-	var gene_id := _grant_active_gene_by_level()
 	var event_bus := _get_event_bus()
 	if event_bus != null:
 		event_bus.player_leveled_up.emit(_level)
 	var first_level_up := _level == 2 and GameConstants.FIRST_LEVEL_WEAPON_ONLY
 	var choices := _roll_cards(first_level_up)
 
-	if not gene_id.is_empty():
-		# 先弹基因弹窗，之后再显示选卡
+	# 每 GENE_LEVEL_INTERVAL 级触发技能基因选择
+	if _level % GameConstants.GENE_LEVEL_INTERVAL == 0:
 		_pending_card_choices = choices
 		_pending_first_level_up = first_level_up
-		_show_gene_popup(gene_id)
+		_show_gene_choice_popup()
 	elif not choices.is_empty():
 		_pause_battle_for_card_select(choices, first_level_up)
 
@@ -264,46 +270,65 @@ func _build_card(def: Dictionary) -> CardData:
 	_card_meta_by_id[card.id] = def
 	return card
 
-func _grant_active_gene_by_level() -> String:
-	if not [_level == 5, _level == 10, _level == 15].has(true):
-		return ""
-	if _active_gene_level_grants.has(_level):
-		return ""
-	_active_gene_level_grants[_level] = true
-	if GameConstants.ACTIVE_SKILL_GENE_POOL.is_empty():
-		return ""
-	var gene_id := str(GameConstants.ACTIVE_SKILL_GENE_POOL[randi() % GameConstants.ACTIVE_SKILL_GENE_POOL.size()])
-	return gene_id
+## ──── 基因三选一弹窗 ────
 
-func _show_gene_popup(gene_id: String) -> void:
+func _roll_gene_choices() -> Array[String]:
+	var cat_has_active := _cat_has_active_gene()
+	# 按稀有度权重构建候选池（重复入池）
+	var pool: Array[String] = []
+	for gene_id: String in GameConstants.ALL_SPECIAL_GENE_POOL:
+		var is_active := GameConstants.ACTIVE_SKILL_GENE_POOL.has(gene_id)
+		if is_active and cat_has_active:
+			continue  # 已有主动技能，过滤掉主动基因
+		var rarity: String = str(GameConstants.GENE_RARITY.get(gene_id, "grey"))
+		var weight: int = int(GameConstants.GENE_RARITY_WEIGHT.get(rarity, 3))
+		for _w in weight:
+			pool.append(gene_id)
+	pool.shuffle()
+	# 取 3 个不重复
+	var seen: Dictionary = {}
+	var result: Array[String] = []
+	for gene_id: String in pool:
+		if not seen.has(gene_id):
+			seen[gene_id] = true
+			result.append(gene_id)
+			if result.size() >= 3:
+				break
+	return result
+
+func _cat_has_active_gene() -> bool:
+	if _selected_cat == null:
+		return false
+	for slot_gene: String in [_selected_cat.gene_slot_1, _selected_cat.gene_slot_2, _selected_cat.gene_slot_3]:
+		if GameConstants.ACTIVE_SKILL_GENE_POOL.has(slot_gene):
+			return true
+	for gene_id: String in _active_genes_gained:
+		if GameConstants.ACTIVE_SKILL_GENE_POOL.has(gene_id):
+			return true
+	return false
+
+func _show_gene_choice_popup() -> void:
 	_battle_paused = true
 	_player_cat.set_battle_paused(true)
 	_spawn_manager.set_battle_paused(true)
 	_set_enemies_paused(true)
 
-	var gene_info: Dictionary = GameConstants.GENE_DISPLAY_ZH.get(gene_id, {"name": gene_id, "desc": "未知技能"})
-	var gene_name: String = str(gene_info.get("name", gene_id))
-	var gene_desc: String = str(gene_info.get("desc", ""))
+	var gene_choices := _roll_gene_choices()
 	var cat_name: String = _selected_cat.cat_name if _selected_cat != null else "你的猫"
 
-	# 检查基因槽是否满
-	var used_slots := _count_used_gene_slots()
-	var slots_full := used_slots >= 3
-
-	# 构建弹窗 UI
 	_gene_popup = Control.new()
 	_gene_popup.set_anchors_preset(Control.PRESET_FULL_RECT)
 	$UI.add_child(_gene_popup)
 
 	var bg := ColorRect.new()
-	bg.color = Color(0.0, 0.0, 0.0, 0.75)
+	bg.color = Color(0.0, 0.0, 0.0, 0.78)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_gene_popup.add_child(bg)
 
 	var panel := PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.custom_minimum_size = Vector2(420.0, 280.0)
-	panel.position = Vector2(-210.0, -140.0)
+	panel.custom_minimum_size = Vector2(480.0, 320.0)
+	panel.position = Vector2(-240.0, -160.0)
 	_gene_popup.add_child(panel)
 
 	var vb := VBoxContainer.new()
@@ -311,66 +336,85 @@ func _show_gene_popup(gene_id: String) -> void:
 	panel.add_child(vb)
 
 	var title_lbl := Label.new()
-	title_lbl.text = "🎉 升至 Lv%d！" % _level
-	title_lbl.add_theme_font_size_override("font_size", 18)
+	title_lbl.text = "🎉 %s 升至 Lv%d！选择一个技能！" % [cat_name, _level]
+	title_lbl.add_theme_font_size_override("font_size", 16)
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(title_lbl)
-
-	var gene_lbl := Label.new()
-	gene_lbl.text = "%s 学会了「%s」！" % [cat_name, gene_name]
-	gene_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(gene_lbl)
-
-	var desc_lbl := Label.new()
-	desc_lbl.text = gene_desc
-	desc_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	desc_lbl.add_theme_font_size_override("font_size", 11)
-	desc_lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
-	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vb.add_child(desc_lbl)
 
 	var sep := HSeparator.new()
 	vb.add_child(sep)
 
-	if slots_full:
-		# 满槽 → 显示替换选项
-		var replace_lbl := Label.new()
-		replace_lbl.text = "技能槽已满，选择替换或放弃："
-		replace_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		vb.add_child(replace_lbl)
+	for gene_id: String in gene_choices:
+		var info: Dictionary = GameConstants.GENE_DISPLAY_ZH.get(gene_id, {"name": gene_id, "desc": ""})
+		var rarity: String = str(GameConstants.GENE_RARITY.get(gene_id, "grey"))
+		var rarity_zh: String = str(GameConstants.RARITY_DISPLAY_ZH.get(rarity, rarity))
+		var is_active := GameConstants.ACTIVE_SKILL_GENE_POOL.has(gene_id)
+		var type_tag := "[主动]" if is_active else "[被动]"
+		var btn := Button.new()
+		btn.text = "%s【%s】%s\n%s" % [str(info.get("name", gene_id)), rarity_zh, type_tag, str(info.get("desc", ""))]
+		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		btn.custom_minimum_size = Vector2(0.0, 60.0)
+		btn.pressed.connect(_on_gene_chosen.bind(gene_id))
+		vb.add_child(btn)
 
-		for slot_idx in 3:
-			var slot_gene := _get_slot_gene(slot_idx)
-			var slot_info: Dictionary = GameConstants.GENE_DISPLAY_ZH.get(slot_gene, {"name": slot_gene})
-			var btn := Button.new()
-			btn.text = "替换 槽%d：「%s」" % [slot_idx + 1, str(slot_info.get("name", slot_gene))]
-			btn.pressed.connect(_on_gene_replace_chosen.bind(slot_idx, gene_id))
-			vb.add_child(btn)
+func _on_gene_chosen(gene_id: String) -> void:
+	# 找空槽写入
+	if _selected_cat != null:
+		if str(_selected_cat.gene_slot_1).is_empty():
+			_selected_cat.gene_slot_1 = gene_id
+			_active_genes_gained.append(gene_id)
+			_close_gene_popup_and_continue()
+			return
+		if str(_selected_cat.gene_slot_2).is_empty():
+			_selected_cat.gene_slot_2 = gene_id
+			_active_genes_gained.append(gene_id)
+			_close_gene_popup_and_continue()
+			return
+		if str(_selected_cat.gene_slot_3).is_empty():
+			_selected_cat.gene_slot_3 = gene_id
+			_active_genes_gained.append(gene_id)
+			_close_gene_popup_and_continue()
+			return
+	# 三槽全满 → 切换到替换界面
+	_pending_gene_to_add = gene_id
+	_show_gene_replace_view(gene_id)
 
-		var abandon_btn := Button.new()
-		abandon_btn.text = "放弃「%s」" % gene_name
-		abandon_btn.pressed.connect(_on_gene_abandoned)
-		vb.add_child(abandon_btn)
-	else:
-		# 有空槽 → 直接写入，显示OK
-		_active_genes_gained.append(gene_id)
-		var ok_btn := Button.new()
-		ok_btn.text = "好的，继续战斗！"
-		ok_btn.pressed.connect(_on_gene_popup_closed)
-		vb.add_child(ok_btn)
+func _show_gene_replace_view(new_gene_id: String) -> void:
+	# 清空原弹窗内容，重建为替换界面
+	if _gene_popup == null:
+		return
+	# 找到 panel 并重建
+	for child: Node in _gene_popup.get_children():
+		if child is PanelContainer:
+			child.queue_free()
+	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.custom_minimum_size = Vector2(420.0, 280.0)
+	panel.position = Vector2(-210.0, -140.0)
+	_gene_popup.add_child(panel)
 
-func _count_used_gene_slots() -> int:
-	var count := 0
-	if _selected_cat == null:
-		return 0
-	if str(_selected_cat.gene_slot_1) != "":
-		count += 1
-	if str(_selected_cat.gene_slot_2) != "":
-		count += 1
-	if str(_selected_cat.gene_slot_3) != "":
-		count += 1
-	count += _active_genes_gained.size()
-	return count
+	var vb := VBoxContainer.new()
+	panel.add_child(vb)
+	var info: Dictionary = GameConstants.GENE_DISPLAY_ZH.get(new_gene_id, {"name": new_gene_id})
+	var lbl := Label.new()
+	lbl.text = "技能槽已满，选择替换或放弃「%s」：" % str(info.get("name", new_gene_id))
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(lbl)
+
+	for slot_idx in 3:
+		var slot_gene := _get_slot_gene(slot_idx)
+		var slot_info: Dictionary = GameConstants.GENE_DISPLAY_ZH.get(slot_gene, {"name": slot_gene})
+		var btn := Button.new()
+		btn.text = "替换 槽%d：「%s」" % [slot_idx + 1, str(slot_info.get("name", slot_gene))]
+		btn.pressed.connect(_on_gene_replace_chosen.bind(slot_idx, new_gene_id))
+		vb.add_child(btn)
+
+	var abandon_btn := Button.new()
+	abandon_btn.text = "放弃「%s」" % str(info.get("name", new_gene_id))
+	abandon_btn.pressed.connect(_on_gene_abandoned)
+	vb.add_child(abandon_btn)
 
 func _get_slot_gene(slot_idx: int) -> String:
 	if _selected_cat == null:
@@ -381,43 +425,42 @@ func _get_slot_gene(slot_idx: int) -> String:
 		2: return str(_selected_cat.gene_slot_3)
 	return ""
 
+func _count_used_gene_slots() -> int:
+	if _selected_cat == null:
+		return 0
+	var count := 0
+	if str(_selected_cat.gene_slot_1) != "": count += 1
+	if str(_selected_cat.gene_slot_2) != "": count += 1
+	if str(_selected_cat.gene_slot_3) != "": count += 1
+	return count
+
 func _on_gene_replace_chosen(slot_idx: int, new_gene_id: String) -> void:
-	# 替换猫的基因槽
 	if _selected_cat != null:
 		match slot_idx:
 			0: _selected_cat.gene_slot_1 = new_gene_id
 			1: _selected_cat.gene_slot_2 = new_gene_id
 			2: _selected_cat.gene_slot_3 = new_gene_id
+	_active_genes_gained.append(new_gene_id)
 	_close_gene_popup_and_continue()
 
 func _on_gene_abandoned() -> void:
-	# 放弃新技能，直接关闭
-	_close_gene_popup_and_continue()
-
-func _on_gene_popup_closed() -> void:
 	_close_gene_popup_and_continue()
 
 func _close_gene_popup_and_continue() -> void:
 	if _gene_popup != null:
 		_gene_popup.queue_free()
 		_gene_popup = null
-	# 显示选卡界面
 	if not _pending_card_choices.is_empty():
 		_pause_battle_for_card_select(_pending_card_choices, _pending_first_level_up)
 		_pending_card_choices.clear()
 	else:
-		# 无选卡，直接恢复战斗
 		_battle_paused = false
 		_player_cat.set_battle_paused(false)
 		_spawn_manager.set_battle_paused(false)
 		_set_enemies_paused(false)
 
 func _xp_required_for_level(level: int) -> int:
-	var idx := level - 1
-	if idx < GameConstants.LEVEL_UP_XP.size():
-		return int(GameConstants.LEVEL_UP_XP[idx])
-	var overflow := idx - GameConstants.LEVEL_UP_XP.size() + 1
-	return int(GameConstants.LEVEL_UP_XP[-1]) + overflow * int(GameConstants.LEVEL_UP_XP_INCREMENT_AFTER_TABLE)
+	return GameConstants.CAT_XP_BASE + level * GameConstants.CAT_XP_INCREMENT
 
 func _on_player_hp_changed(_cur: float, _max: float) -> void:
 	_refresh_hud()
@@ -452,6 +495,12 @@ func _finish_battle(victory: bool) -> void:
 	_battle_paused = true
 	_player_cat.set_battle_paused(true)
 	_spawn_manager.set_battle_paused(true)
+
+	# 将本场战斗的等级和XP写回猫的持久数据
+	if _selected_cat != null:
+		_selected_cat.level = _level
+		_selected_cat.xp = _fish
+
 	var event_bus := _get_event_bus()
 	if event_bus != null:
 		event_bus.battle_ended.emit(victory)

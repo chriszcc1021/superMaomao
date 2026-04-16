@@ -113,7 +113,7 @@ func finish_expedition(game_state: Node, event_bus: Node, success: bool) -> int:
 	if cat != null:
 		_write_active_genes(cat, game_state.expedition_active_genes)
 		cat.has_expeditioned = true
-		cat.status = GameConstants.LIFECYCLE_STATUS_IDLE
+		cat.status = GameConstants.LIFECYCLE_STATUS_RETIRED  # 远征后退休，不可再出征
 	game_state.clear_expedition_state()
 	if event_bus != null:
 		event_bus.expedition_ended.emit(success, reward)

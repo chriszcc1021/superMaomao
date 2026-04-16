@@ -72,6 +72,38 @@ func _produce_resources(game_state: Node) -> void:
 			var level: int = int(game_state.get_building_level("fortune_cat"))
 			var per_worker: int = int(GameConstants.FORTUNE_CAT_OUTPUT_PER_WORKER.get(level, 15))
 			game_state.add_coins(per_worker * fortune_workers)
+	# 建筑工作给猫加 XP
+	_grant_building_xp(game_state)
+
+func _grant_building_xp(game_state: Node) -> void:
+	for cat: CatData in game_state.get_living_cats():
+		if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
+			continue
+		if cat.age_days < GameConstants.KITTEN_DAYS:
+			continue
+		var building := str(cat.assigned_building)
+		var xp_gain := 0
+		if building.is_empty():
+			xp_gain = GameConstants.CAT_WANDER_XP_PER_DAY
+		elif GameConstants.BUILDING_WORK_XP_PER_DAY.has(building):
+			var level := int(game_state.get_building_level(building)) if game_state.has_building(building) else 1
+			var xp_table: Dictionary = GameConstants.BUILDING_WORK_XP_PER_DAY[building]
+			xp_gain = int(xp_table.get(level, xp_table.get(1, 5)))
+		if xp_gain > 0:
+			_apply_cat_xp(cat, xp_gain)
+
+func _apply_cat_xp(cat: CatData, amount: int) -> void:
+	if cat.level >= GameConstants.CAT_LEVEL_CAP:
+		return
+	cat.xp += amount
+	# 连续检查是否升级（建筑XP不触发技能选择，只升等级）
+	while cat.level < GameConstants.CAT_LEVEL_CAP:
+		var needed := GameConstants.CAT_XP_BASE + cat.level * GameConstants.CAT_XP_INCREMENT
+		if cat.xp >= needed:
+			cat.xp -= needed
+			cat.level += 1
+		else:
+			break
 
 func _count_workers_at_building(game_state: Node, building_id: String) -> int:
 	var count := 0

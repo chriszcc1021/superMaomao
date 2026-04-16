@@ -194,6 +194,7 @@ const BREED_DISPLAY_ZH := {
 
 const RARITY_DISPLAY_ZH := {
 	"grey": "灰",
+	"green": "绿",
 	"blue": "蓝",
 	"purple": "紫"
 }
@@ -255,6 +256,44 @@ const CAMP_PASSIVE_GENE_POOL := [
 ]
 
 const ALL_SPECIAL_GENE_POOL := ACTIVE_SKILL_GENE_POOL + COMBAT_PASSIVE_GENE_POOL + CAMP_PASSIVE_GENE_POOL
+
+# 基因稀有度（用于权重随机选择）
+const GENE_RARITY := {
+	# 战斗主动技能 → 蓝色（稀有）
+	"curious_lockon": "blue", "cold_paw": "blue", "battle_frenzy": "blue",
+	"bulky_body": "blue", "cat_step": "blue", "self_heal": "blue",
+	"chain_hit": "blue", "cleanup_blast": "blue", "survival_rush": "blue",
+	# 战斗被动 → 混合
+	"tenacity_revive": "blue", "resonance_stack": "green", "desperado": "green",
+	"hunter_instinct": "green", "invulnerable_frame": "blue", "berserk_factor": "green",
+	"lone_pride": "green", "coward": "grey", "sleepyhead": "grey",
+	# 后勤被动 → 灰/绿
+	"hard_worker": "grey", "golden_paw": "green", "mini_nurse": "grey",
+	"love_spreader": "grey", "big_belly": "grey", "lucky_cat": "green",
+	"breeding_expert": "grey", "walnut_cracker": "grey",
+	"builder_discount": "grey", "community_planner": "grey"
+}
+
+# 基因权重（按稀有度，用于重复入池）
+# grey=3份, green=2份, blue=1份 → 自然概率分配
+const GENE_RARITY_WEIGHT := {"grey": 3, "green": 2, "blue": 1}
+
+# 猫永久等级系统
+const CAT_LEVEL_CAP := 100
+const GENE_LEVEL_INTERVAL := 10  # 每10级选一次技能基因
+const CAT_XP_BASE := 150         # 每级所需 XP 基础值
+const CAT_XP_INCREMENT := 2      # 每级额外增加的 XP
+
+# 建筑工作每天贡献猫XP
+const BUILDING_WORK_XP_PER_DAY := {
+	"food_farm":       {1: 15, 2: 28, 3: 45},
+	"gold_mine":       {1: 15, 2: 28, 3: 45},
+	"fortune_cat":     {1: 18, 2: 32, 3: 50},
+	"nursery":         {1: 8,  2: 16, 3: 28},
+	"hospital":        {1: 8,  2: 16, 3: 28},
+	"heart_cat_house": {1: 8,  2: 16, 3: 28}
+}
+const CAT_WANDER_XP_PER_DAY := 3  # 自由漫游每天获得的XP
 
 const LIFECYCLE_STATUS_IDLE := "idle"
 const LIFECYCLE_STATUS_EXPEDITION := "expedition"
