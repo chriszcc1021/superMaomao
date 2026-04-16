@@ -49,6 +49,10 @@ func _ready() -> void:
 	_set_timer_by_node_type()
 	_load_shop_cards()
 	_refresh_hud()
+	# 进入战斗 → 远征时间模式
+	var tm := get_node_or_null("/root/TimeManager")
+	if tm != null:
+		tm.set_expedition_mode(true)
 	var event_bus := _get_event_bus()
 	if event_bus != null:
 		event_bus.battle_started.emit()
@@ -514,6 +518,10 @@ func _finish_battle(victory: bool) -> void:
 	var scene_manager := _get_scene_manager()
 	if scene_manager != null:
 		scene_manager.return_from_battle(result)
+		# 回营地 → 恢复正常时间模式
+		var tm := get_node_or_null("/root/TimeManager")
+		if tm != null:
+			tm.set_expedition_mode(false)
 		return
 	push_error("SceneManager is missing. Battle result cannot be returned safely.")
 

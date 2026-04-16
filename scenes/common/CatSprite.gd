@@ -70,6 +70,11 @@ func _update_anim_state() -> void:
 	if cat_data.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
 		_anim_state = "expedition"
 		return
+	# 夜晚强制睡觉
+	var time_manager := Engine.get_singleton("TimeManager") if Engine.has_singleton("TimeManager") else get_node_or_null("/root/TimeManager")
+	if time_manager != null and not bool(time_manager.get("is_daytime")):
+		_anim_state = "sleep"
+		return
 	match str(cat_data.assigned_building):
 		"cat_house":   _anim_state = "sleep"
 		"nursery":     _anim_state = "love"

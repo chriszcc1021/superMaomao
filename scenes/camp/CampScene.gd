@@ -43,6 +43,9 @@ const STATUS_DISPLAY_ZH := {
 @onready var _food_label: Label = $UI/CampHUD/HBox/CatFoodLabel
 @onready var _day_label: Label = $UI/CampHUD/HBox/DayLabel
 @onready var _next_day_button: Button = $UI/CampHUD/HBox/NextDayButton
+
+var _time_manager: Node = null
+var _is_night: bool = false
 @onready var _cat_list_text: RichTextLabel = $UI/CatListUI/VBox/CatListText
 @onready var _stray_panel: PanelContainer = $UI/StrayNotification
 @onready var _stray_label: Label = $UI/StrayNotification/VBox/StrayLabel
@@ -61,14 +64,62 @@ func _ready() -> void:
 	randomize()
 	GameState = get_node_or_null("/root/GameState")
 	EventBus = get_node_or_null("/root/EventBus")
+	_time_manager = get_node_or_null("/root/TimeManager")
 	_spawn_buildings()
 	_bind_signals()
+	_bind_time_signals()
 	_refresh_all()
+	# 隐藏手动推进按钮（时间自动流逝）
+	if _next_day_button != null:
+		_next_day_button.visible = false
+
+func _process(_delta: float) -> void:
+	# 实时更新时钟显示（每帧刷新时间标签）
+	_refresh_time_label()
+
+func _bind_time_signals() -> void:
+	if _time_manager == null:
+		return
+	if not _time_manager.night_started.is_connected(_on_night_started):
+		_time_manager.night_started.connect(_on_night_started)
+	if not _time_manager.day_started.is_connected(_on_day_started):
+		_time_manager.day_started.connect(_on_day_started)
+	if not _time_manager.day_boundary_crossed.is_connected(_on_day_boundary_crossed):
+		_time_manager.day_boundary_crossed.connect(_on_day_boundary_crossed)
+
+func _on_night_started() -> void:
+	_is_night = true
+	_refresh_cat_nodes()  # 猫切换为睡觉状态
+	_refresh_hud()
+
+func _on_day_started() -> void:
+	_is_night = false
+	_refresh_cat_nodes()  # 猫切换为工作状态
+	_refresh_hud()
+
+func _on_day_boundary_crossed() -> void:
+	# 资源结算已由 TimeManager._trigger_day_production() 处理
+	_refresh_all()
+
+func _unhandled_input(event: InputEvent) -> void:
+	# ESC 键暂停/恢复
+	if event.is_action_pressed("ui_cancel") and _time_manager != null:
+		if _time_manager.time_paused:
+			_time_manager.resume()
+		else:
+			_time_manager.pause()
+		_refresh_hud()
+
+func _refresh_time_label() -> void:
+	if _time_manager == null or _day_label == null:
+		return
+	var time_label := _time_manager.get_time_label()
+	var paused_tag := " ⏸" if _time_manager.time_paused else ""
+	_day_label.text = "第%d天 %s%s" % [_time_manager.total_days + 1, time_label, paused_tag]
 
 func _bind_signals() -> void:
 	if not _next_day_button.pressed.is_connected(_on_next_day_pressed):
-		_next_day_button.pressed.connect(_on_next_day_pressed)
-	if not _accept_stray_button.pressed.is_connected(_on_accept_stray_pressed):
+		_next_day_button.pressed.connect(_on_next_day_pressed)	if not _accept_stray_button.pressed.is_connected(_on_accept_stray_pressed):
 		_accept_stray_button.pressed.connect(_on_accept_stray_pressed)
 	if not _reject_stray_button.pressed.is_connected(_on_reject_stray_pressed):
 		_reject_stray_button.pressed.connect(_on_reject_stray_pressed)
@@ -300,7 +351,7 @@ func _refresh_all() -> void:
 func _refresh_hud() -> void:
 	_coins_label.text = "金币: %d" % GameState.coins
 	_food_label.text = "猫粮: %d/%d" % [GameState.cat_food, GameState.cat_food_cap]
-	_day_label.text = "天数: %d" % GameState.camp_day
+	# 时间标签在 _refresh_time_label() 里实时更新，这里不需要重复设置
 
 func _refresh_cat_list() -> void:
 	var lines: PackedStringArray = []

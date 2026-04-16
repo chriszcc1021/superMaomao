@@ -21,6 +21,7 @@ GameState="*res://autoload/GameState.gd"
 SceneManager="*res://autoload/SceneManager.gd"
 EventBus="*res://autoload/EventBus.gd"
 McpInteractionServer="*res://autoload/McpInteractionServer.gd"
+TimeManager="*res://autoload/TimeManager.gd"
 
 [display]
 
