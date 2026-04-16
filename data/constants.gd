@@ -42,6 +42,11 @@ const GOLD_MINE_OUTPUT_BY_WORKERS := {
 	2: 7
 }
 
+# 招财猫神龛（按猫数产金）
+const FORTUNE_CAT_OUTPUT_PER_WORKER := {1: 15, 2: 25, 3: 40}  # Lv1/2/3 每只猫/天
+const FORTUNE_CAT_MAX_WORKERS_BY_LEVEL := {1: 1, 2: 2, 3: 3}
+const FORTUNE_CAT_UPGRADE_COSTS := [100, 200, 400]  # 建造/升2/升3
+
 const BUILDING_COSTS := {
 	"cat_house_expand": 60,
 	"granary": 80,
@@ -50,7 +55,8 @@ const BUILDING_COSTS := {
 	"gold_mine": 40,
 	"nursery": 80,
 	"heart_cat_house": 50,
-	"cemetery": 30
+	"cemetery": 30,
+	"fortune_cat": 100
 }
 
 const GRANARY_UPGRADE_COSTS := [80, 160, 320, 600]

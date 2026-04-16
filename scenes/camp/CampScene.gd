@@ -13,7 +13,8 @@ const BUILDING_SCENES := {
 	"gold_mine": preload("res://scenes/camp/buildings/GoldMine.tscn"),
 	"granary": preload("res://scenes/camp/buildings/Granary.tscn"),
 	"heart_cat_house": preload("res://scenes/camp/buildings/HeartCatHouse.tscn"),
-	"cemetery": preload("res://scenes/camp/buildings/Cemetery.tscn")
+	"cemetery": preload("res://scenes/camp/buildings/Cemetery.tscn"),
+	"fortune_cat": preload("res://scenes/camp/buildings/BuildingPlaceholder.tscn")
 }
 
 const BUILDING_LAYOUT := {
@@ -24,7 +25,8 @@ const BUILDING_LAYOUT := {
 	"nursery": Vector2(220, 360),
 	"hospital": Vector2(430, 360),
 	"heart_cat_house": Vector2(640, 360),
-	"cemetery": Vector2(850, 360)
+	"cemetery": Vector2(850, 360),
+	"fortune_cat": Vector2(535, 520)
 }
 
 const STATUS_DISPLAY_ZH := {
@@ -93,7 +95,27 @@ func _spawn_buildings() -> void:
 		instance.position = BUILDING_LAYOUT.get(building_id, Vector2.ZERO)
 		if not GameState.has_building(building_id):
 			instance.modulate = Color(1.0, 1.0, 1.0, 0.35)
+		# 添加点击区域，用于建筑交互和猫分配
+		var click_area := Area2D.new()
+		var col := CollisionShape2D.new()
+		var shape := RectangleShape2D.new()
+		shape.size = Vector2(60.0, 60.0)
+		col.shape = shape
+		click_area.add_child(col)
+		click_area.input_pickable = true
+		click_area.input_event.connect(_on_building_clicked.bind(building_id))
+		instance.add_child(click_area)
 		_buildings_root.add_child(instance)
+
+func _on_building_clicked(viewport: Node, event: InputEvent, _shape_idx: int, building_id: String) -> void:
+	if not (event is InputEventMouseButton):
+		return
+	var mb := event as InputEventMouseButton
+	if not (mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT):
+		return
+	if not GameState.has_building(building_id):
+		return
+	_show_building_sidebar(building_id)
 
 func _refresh_cat_nodes() -> void:
 	for child: Node in _cats_root.get_children():
@@ -102,6 +124,13 @@ func _refresh_cat_nodes() -> void:
 		var cat_sprite: Node2D = CatSpriteScene.instantiate()
 		cat_sprite.global_position = _random_cat_spawn_position()
 		cat_sprite.call("setup", cat)
+		# 如果猫被分配了建筑，设置锚点
+		var assigned: String = str(cat.assigned_building)
+		if not assigned.is_empty() and BUILDING_LAYOUT.has(assigned):
+			var anchor: Vector2 = BUILDING_LAYOUT[assigned]
+			# 在建筑附近随机偏移，避免叠在一起
+			anchor += Vector2(randf_range(-20.0, 20.0), randf_range(-15.0, 15.0))
+			cat_sprite.call("set_building_anchor", assigned, anchor)
 		_cats_root.add_child(cat_sprite)
 
 func _random_cat_spawn_position() -> Vector2:
@@ -110,6 +139,74 @@ func _random_cat_spawn_position() -> Vector2:
 		randf_range(rect.position.x, rect.end.x),
 		randf_range(rect.position.y, rect.end.y)
 	)
+
+func _show_building_sidebar(building_id: String) -> void:
+	var lines: PackedStringArray = []
+	match building_id:
+		"cat_house":
+			lines.append("🏠 猫窝")
+			lines.append("已住：%d / %d" % [GameState.get_living_cats().size(), GameState.cat_house_slots])
+			lines.append("扩建费用：%d金" % GameConstants.BUILDING_COSTS.get("cat_house_expand", 60))
+		"granary":
+			lines.append("🌾 粮仓")
+			lines.append("猫粮：%d / %d" % [GameState.cat_food, GameState.cat_food_cap])
+		"food_farm":
+			var workers := _get_assigned_cats_text("food_farm")
+			lines.append("🌱 猫粮田")
+			lines.append("工作猫：%s" % workers)
+			lines.append("每日产粮：按工作猫数量")
+		"gold_mine":
+			var workers := _get_assigned_cats_text("gold_mine")
+			lines.append("⛏️ 金矿")
+			lines.append("工作猫：%s" % workers)
+		"fortune_cat":
+			var workers := _get_assigned_cats_text("fortune_cat")
+			var level := GameState.get_building_level("fortune_cat")
+			var per := int(GameConstants.FORTUNE_CAT_OUTPUT_PER_WORKER.get(level, 15))
+			var max_w := int(GameConstants.FORTUNE_CAT_MAX_WORKERS_BY_LEVEL.get(level, 1))
+			lines.append("🪙 招财猫神龛 Lv%d" % level)
+			lines.append("工作猫（%d/%d）：%s" % [_count_assigned_cats("fortune_cat"), max_w, workers])
+			lines.append("每日产金：%d金/只猫" % per)
+		"nursery":
+			lines.append("🍼 产房")
+			lines.append("繁育成功率：%d%%" % int(GameConstants.BREED_SUCCESS_WITH_NURSERY * 100))
+		"hospital":
+			lines.append("🏥 医院 → 查看详情")
+		"heart_cat_house":
+			lines.append("❤️ 爱心猫窝")
+			lines.append("流浪猫来访概率提升 +20%%")
+		"cemetery":
+			lines.append("🪦 墓地 → 查看详情")
+	# 分配猫到建筑按钮（招财猫、猫粮田、金矿）
+	if building_id in ["fortune_cat", "food_farm", "gold_mine"]:
+		lines.append("")
+		lines.append("── 分配猫咪 ──")
+		for cat: CatData in GameState.get_living_cats():
+			if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
+				continue
+			var mark := "✅" if str(cat.assigned_building) == building_id else "  "
+			lines.append("%s %s (%s)" % [mark, cat.cat_name, _profession_zh(cat.profession)])
+	_set_sidebar_text("\n".join(lines))
+
+func _get_assigned_cats_text(building_id: String) -> String:
+	var names: PackedStringArray = []
+	for cat: CatData in GameState.get_living_cats():
+		if str(cat.assigned_building) == building_id:
+			names.append(cat.cat_name)
+	return ", ".join(names) if not names.is_empty() else "无"
+
+func _count_assigned_cats(building_id: String) -> int:
+	var count := 0
+	for cat: CatData in GameState.get_living_cats():
+		if str(cat.assigned_building) == building_id:
+			count += 1
+	return count
+
+func _set_sidebar_text(text: String) -> void:
+	# 直接用 cat_list_text 作为侧边栏展示（临时复用）
+	if _cat_list_text != null:
+		if _cat_list_text != null:
+		_cat_list_text.text = text
 
 func _on_next_day_pressed() -> void:
 	_day_manager.advance_day(GameState, EventBus)

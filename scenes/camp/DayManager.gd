@@ -65,6 +65,24 @@ func _produce_resources(game_state: Node) -> void:
 		var gold_workers: int = min(max(workers - 3, 0), 2)
 		var gold_gain: int = int(GameConstants.GOLD_MINE_OUTPUT_BY_WORKERS.get(gold_workers, 2))
 		game_state.add_coins(gold_gain)
+	# 招财猫神龛：按分配到此建筑的猫数量产金
+	if game_state.has_building("fortune_cat"):
+		var fortune_workers: int = _count_workers_at_building(game_state, "fortune_cat")
+		if fortune_workers > 0:
+			var level: int = int(game_state.get_building_level("fortune_cat"))
+			var per_worker: int = int(GameConstants.FORTUNE_CAT_OUTPUT_PER_WORKER.get(level, 15))
+			game_state.add_coins(per_worker * fortune_workers)
+
+func _count_workers_at_building(game_state: Node, building_id: String) -> int:
+	var count := 0
+	for cat: CatData in game_state.get_living_cats():
+		if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
+			continue
+		if cat.age_days < GameConstants.KITTEN_DAYS:
+			continue
+		if str(cat.assigned_building) == building_id:
+			count += 1
+	return count
 
 func _count_available_workers(game_state: Node) -> int:
 	var count := 0

@@ -153,6 +153,14 @@ func set_building_state(building_id: String, built: bool) -> void:
 func has_building(building_id: String) -> bool:
 	return bool(buildings_built.get(building_id, false))
 
+func get_building_level(building_id: String) -> int:
+	var val = buildings_built.get(building_id, false)
+	if val is int:
+		return val
+	if val == true:
+		return 1
+	return 0
+
 func start_expedition(cat: CatData) -> bool:
 	if cat == null or expedition_active:
 		return false

@@ -13,6 +13,7 @@ const GameConstants := preload("res://data/constants.gd")
 @export var age_days: int = 0
 @export var has_expeditioned: bool = false
 @export var breed_count: int = 0
+@export var assigned_building: String = ""  # 分配的建筑，空字符串=自由漫游
 
 @export var gene_head: String = "round"
 @export var gene_ear: String = "upright"
