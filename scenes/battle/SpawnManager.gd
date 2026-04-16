@@ -16,7 +16,7 @@ var _elapsed: float = 0.0
 var _battle_paused: bool = false
 
 var _opening_wave_index: int = 0
-var _regular_spawn_cd: float = 3.5
+var _regular_spawn_cd: float = GameConstants.BATTLE_SPAWN_CD_NORMAL_INITIAL
 var _elite_spawned: bool = false
 var _boss_spawned_once: bool = false
 
@@ -31,7 +31,7 @@ func configure(node_type: String, enemies_root: Node2D, player_cat: Node2D) -> v
 	_player_cat = player_cat
 	_elapsed = 0.0
 	_opening_wave_index = 0
-	_regular_spawn_cd = 3.5
+	_regular_spawn_cd = GameConstants.BATTLE_SPAWN_CD_NORMAL_INITIAL
 	_elite_spawned = false
 	_boss_spawned_once = false
 
@@ -64,14 +64,14 @@ func _process_normal_mode(delta: float) -> void:
 	_regular_spawn_cd -= delta
 	if _regular_spawn_cd > 0.0:
 		return
-	_regular_spawn_cd = randf_range(2.8, 4.2)
+	_regular_spawn_cd = randf_range(GameConstants.BATTLE_SPAWN_CD_NORMAL_MIN, GameConstants.BATTLE_SPAWN_CD_NORMAL_MAX)
 	var roll := randf()
-	if roll < 0.55:
-		_spawn_enemy_group("small_monkey", randi_range(2, 4))
-	elif roll < 0.75:
-		_spawn_enemy_group("stone_monkey", randi_range(1, 3))
-	elif roll < 0.9:
-		_spawn_enemy_group("monkey_swarm", 5)
+	if roll < GameConstants.BATTLE_NORMAL_ROLL_SMALL_MONKEY:
+		_spawn_enemy_group("small_monkey", randi_range(GameConstants.BATTLE_NORMAL_SMALL_MONKEY_MIN, GameConstants.BATTLE_NORMAL_SMALL_MONKEY_MAX))
+	elif roll < GameConstants.BATTLE_NORMAL_ROLL_STONE_MONKEY:
+		_spawn_enemy_group("stone_monkey", randi_range(GameConstants.BATTLE_NORMAL_STONE_MONKEY_MIN, GameConstants.BATTLE_NORMAL_STONE_MONKEY_MAX))
+	elif roll < GameConstants.BATTLE_NORMAL_ROLL_SWARM:
+		_spawn_enemy_group("monkey_swarm", GameConstants.BATTLE_NORMAL_SWARM_COUNT)
 	else:
 		_spawn_enemy_group("tank_gorilla", 1)
 
@@ -84,9 +84,9 @@ func _process_elite_mode(delta: float) -> void:
 	_regular_spawn_cd -= delta
 	if _regular_spawn_cd > 0.0:
 		return
-	_regular_spawn_cd = randf_range(3.0, 4.8)
-	_spawn_enemy_group("small_monkey", randi_range(1, 3))
-	_spawn_enemy_group("stone_monkey", randi_range(0, 2))
+	_regular_spawn_cd = randf_range(GameConstants.BATTLE_SPAWN_CD_ELITE_MIN, GameConstants.BATTLE_SPAWN_CD_ELITE_MAX)
+	_spawn_enemy_group("small_monkey", randi_range(GameConstants.BATTLE_ELITE_SMALL_MONKEY_MIN, GameConstants.BATTLE_ELITE_SMALL_MONKEY_MAX))
+	_spawn_enemy_group("stone_monkey", randi_range(GameConstants.BATTLE_ELITE_STONE_MONKEY_MIN, GameConstants.BATTLE_ELITE_STONE_MONKEY_MAX))
 
 func _process_boss_mode() -> void:
 	if _boss_spawned_once:
@@ -120,6 +120,6 @@ func _on_enemy_died(enemy_type: String, fish_drop: int, world_position: Vector2)
 
 func _random_spawn_pos() -> Vector2:
 	var center := _player_cat.global_position
-	var radius := randf_range(260.0, 380.0)
+	var radius := randf_range(GameConstants.BATTLE_SPAWN_RADIUS_MIN, GameConstants.BATTLE_SPAWN_RADIUS_MAX)
 	var angle := randf_range(0.0, TAU)
 	return center + Vector2.RIGHT.rotated(angle) * radius

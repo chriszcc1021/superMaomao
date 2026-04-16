@@ -78,6 +78,10 @@ func add_cat_food(value: int) -> void:
 	cat_food = min(cat_food_cap, cat_food + value)
 	cat_food_changed.emit(cat_food)
 
+func set_cat_food(value: int) -> void:
+	cat_food = clampi(value, 0, cat_food_cap)
+	cat_food_changed.emit(cat_food)
+
 func consume_cat_food(value: int) -> bool:
 	if value <= 0:
 		return true
@@ -98,20 +102,36 @@ func add_cat(cat: CatData) -> bool:
 
 func get_occupied_cat_house_slots() -> int:
 	var occupied := 0
+	for cat: CatData in get_living_cats():
+		if cat == null:
+			continue
+		occupied += 1
+	return occupied
+
+func get_living_cats() -> Array[CatData]:
+	var living: Array[CatData] = []
 	for cat: CatData in cats:
 		if cat == null:
 			continue
 		if cat.status == GameConstants.LIFECYCLE_STATUS_DEAD:
 			continue
-		occupied += 1
-	return occupied
+		living.append(cat)
+	return living
 
 func has_free_cat_house_slot() -> bool:
 	return get_occupied_cat_house_slots() < cat_house_slots
 
+func advance_camp_day() -> void:
+	camp_day += 1
+	day_advanced.emit(camp_day)
+
 func mark_cat_dead(cat_id: String) -> void:
 	for cat: CatData in cats:
+		if cat == null:
+			continue
 		if cat.id == cat_id:
+			if cat.status == GameConstants.LIFECYCLE_STATUS_DEAD:
+				return
 			cat.status = GameConstants.LIFECYCLE_STATUS_DEAD
 			cat_died.emit(cat)
 			return
@@ -132,3 +152,42 @@ func set_building_state(building_id: String, built: bool) -> void:
 
 func has_building(building_id: String) -> bool:
 	return bool(buildings_built.get(building_id, false))
+
+func start_expedition(cat: CatData) -> bool:
+	if cat == null or expedition_active:
+		return false
+	expedition_active = true
+	expedition_cat_id = cat.id
+	expedition_layer = 1
+	expedition_battle_wins = 0
+	expedition_buffs.clear()
+	expedition_active_genes.clear()
+	cat.status = GameConstants.LIFECYCLE_STATUS_EXPEDITION
+	return true
+
+func record_expedition_battle_result(result: Dictionary) -> void:
+	expedition_battle_wins += int(result.get("battle_wins", 0))
+	for gene_id: String in result.get("active_genes_gained", []):
+		add_expedition_active_gene(gene_id)
+
+func add_expedition_buff(buff_id: String) -> void:
+	if buff_id.is_empty():
+		return
+	expedition_buffs.append(buff_id)
+
+func add_expedition_active_gene(gene_id: String) -> void:
+	if gene_id.is_empty():
+		return
+	expedition_active_genes.append(gene_id)
+
+func advance_expedition_layer() -> int:
+	expedition_layer += 1
+	return expedition_layer
+
+func clear_expedition_state() -> void:
+	expedition_active = false
+	expedition_cat_id = ""
+	expedition_layer = 0
+	expedition_battle_wins = 0
+	expedition_buffs.clear()
+	expedition_active_genes.clear()

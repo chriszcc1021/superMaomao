@@ -22,7 +22,7 @@ var _battle_time_left: float = GameConstants.BATTLE_NORMAL_DURATION
 
 var _level: int = 1
 var _fish: int = 0
-var _xp_to_next: int = 5
+var _xp_to_next: int = int(GameConstants.LEVEL_UP_XP[0])
 var _cards: Array[CardData] = []
 var _card_by_id: Dictionary = {}
 var _card_meta_by_id: Dictionary = {}
@@ -185,7 +185,7 @@ func _roll_cards(force_weapon_only: bool) -> Array[CardData]:
 	for def: Dictionary in available:
 		var card := _build_card(def)
 		result.append(card)
-		if result.size() >= 3:
+		if result.size() >= GameConstants.BATTLE_CARD_CHOICE_COUNT:
 			break
 	return result
 
@@ -275,8 +275,8 @@ func _finish_battle(victory: bool) -> void:
 	var scene_manager := _get_scene_manager()
 	if scene_manager != null:
 		scene_manager.return_from_battle(result)
-	else:
-		get_tree().change_scene_to_file("res://scenes/camp/CampScene.tscn")
+		return
+	push_error("SceneManager is missing. Battle result cannot be returned safely.")
 
 func _get_game_state() -> Node:
 	return get_node_or_null("/root/GameState")

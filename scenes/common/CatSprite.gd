@@ -19,16 +19,16 @@ func _ready() -> void:
 
 func setup(data: CatData) -> void:
 	cat_data = data
-	_move_speed = max(20.0, cat_data.base_move_speed)
+	_move_speed = max(GameConstants.CAT_WANDER_MIN_MOVE_SPEED, cat_data.base_move_speed)
 	if cat_data.base_move_speed <= 0.0:
 		cat_data.calculate_stats()
-		_move_speed = max(20.0, cat_data.base_move_speed)
+		_move_speed = max(GameConstants.CAT_WANDER_MIN_MOVE_SPEED, cat_data.base_move_speed)
 	queue_redraw()
 
 func _process(delta: float) -> void:
 	if not auto_wander:
 		return
-	if global_position.distance_to(_target_position) < 4.0:
+	if global_position.distance_to(_target_position) < GameConstants.CAT_WANDER_TARGET_REACHED_DISTANCE:
 		_pick_new_target()
 		return
 	global_position = global_position.move_toward(_target_position, _move_speed * delta)

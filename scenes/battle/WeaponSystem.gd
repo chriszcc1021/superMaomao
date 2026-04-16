@@ -32,7 +32,7 @@ func _process(delta: float) -> void:
 		_basic_attack_timer = GameConstants.BATTLE_BASIC_CLAW_INTERVAL
 		_fire_basic_claw()
 	if _weapon_cards.size() > 0 and _weapon_attack_timer <= 0.0:
-		_weapon_attack_timer = 1.2
+		_weapon_attack_timer = GameConstants.BATTLE_WEAPON_ATTACK_INTERVAL
 		_fire_weapon_cards()
 
 func apply_weapon_card(card: CardData) -> void:
@@ -70,15 +70,15 @@ func _fire_weapon_cards() -> void:
 		return
 	var idx := 0
 	for card: CardData in _weapon_cards:
-		var stack_scale := 1.0 + 0.20 * float(max(card.stack_count - 1, 0))
+		var stack_scale := 1.0 + GameConstants.BATTLE_WEAPON_STACK_BONUS * float(max(card.stack_count - 1, 0))
 		var projectile := ProjectileScene.instantiate()
 		projectile.global_position = _owner_cat.global_position
 		var dir: Vector2 = _owner_cat.call("get_attack_direction")
-		var angle_offset := deg_to_rad(float(idx - _weapon_cards.size() / 2.0) * 6.0)
+		var angle_offset := deg_to_rad(float(idx - _weapon_cards.size() / 2.0) * GameConstants.BATTLE_WEAPON_SPREAD_DEGREES)
 		dir = dir.rotated(angle_offset)
 		projectile.setup(
 			dir,
-			float(_owner_cat.get("attack")) * 0.55 * stack_scale,
+			float(_owner_cat.get("attack")) * GameConstants.BATTLE_WEAPON_DAMAGE_MULT * stack_scale,
 			float(_owner_cat.get("attack_range")) * GameConstants.BATTLE_TILE_SIZE,
 			_color_by_rarity(card.rarity)
 		)

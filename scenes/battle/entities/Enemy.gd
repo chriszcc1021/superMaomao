@@ -1,6 +1,8 @@
 class_name Enemy
 extends CharacterBody2D
 
+const GameConstants := preload("res://data/constants.gd")
+
 signal died(enemy_type: String, fish_drop: int, world_position: Vector2)
 
 @export var enemy_type: String = "small_monkey"
@@ -40,8 +42,8 @@ func _physics_process(delta: float) -> void:
 	var dir := (_target.global_position - global_position).normalized()
 	velocity = dir * move_speed
 	move_and_slide()
-	if global_position.distance_to(_target.global_position) <= 20.0 and _attack_cd <= 0.0:
-		_attack_cd = 0.8
+	if global_position.distance_to(_target.global_position) <= GameConstants.BATTLE_ENEMY_MELEE_RANGE and _attack_cd <= 0.0:
+		_attack_cd = GameConstants.BATTLE_ENEMY_MELEE_INTERVAL
 		if _target.has_method("take_damage"):
 			_target.call("take_damage", damage)
 
