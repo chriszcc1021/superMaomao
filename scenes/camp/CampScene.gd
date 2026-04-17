@@ -81,8 +81,7 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	_refresh_time_label()
-	if _starter_overlay != null and _starter_overlay.visible:
-		_refresh_starter_overlay()
+	# starter overlay 只在首次显示时刷新，不需要每帧调用
 
 func _bind_time_signals() -> void:
 	if _time_manager == null:

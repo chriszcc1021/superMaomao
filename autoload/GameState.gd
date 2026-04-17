@@ -1,6 +1,5 @@
 extends Node
 
-const CatFactory := preload("res://data/cat_factory.gd")
 
 const DEFAULT_BUILDINGS_BUILT := {
 	"cat_house": true,
