@@ -63,6 +63,11 @@ var _starter_hint_label: Label = null
 var _starter_choice_buttons: Array[Button] = []
 var _starter_overlay_paused_time: bool = false
 
+# 升级按钮容器（动态创建）
+var _action_btn_container: VBoxContainer = null
+# 当前选中的建筑ID（用于升级后刷新）
+var _selected_building_id: String = ""
+
 func _ready() -> void:
 	randomize()
 	_game_state = get_node_or_null("/root/GameState")
@@ -70,6 +75,7 @@ func _ready() -> void:
 	_time_manager = get_node_or_null("/root/TimeManager")
 	if _game_state != null and _game_state.has_method("ensure_intro_state"):
 		_game_state.ensure_intro_state()
+	_init_action_btn_container()
 	_spawn_buildings()
 	_bind_signals()
 	_bind_time_signals()
@@ -247,52 +253,124 @@ func _random_cat_spawn_position() -> Vector2:
 	)
 
 func _show_building_sidebar(building_id: String) -> void:
+	_selected_building_id = building_id
 	var lines: PackedStringArray = []
 	match building_id:
 		"cat_house":
-			lines.append("🏠 猫窝")
-			lines.append("已住：%d / %d" % [_game_state.get_living_cats().size(), _game_state.cat_house_slots])
-			var expand_cost: int = _get_effective_building_cost(int(GameConstants.BUILDING_COSTS.get("cat_house_expand", 60)))
-			lines.append("扩建费用：%d金" % expand_cost)
+			var slots: int = _game_state.cat_house_slots
+			lines.append("🏠 猫窝 (上限 %d)" % slots)
+			lines.append("已住：%d / %d" % [_game_state.get_living_cats().size(), slots])
+			if slots < GameConstants.MAX_CAT_HOUSE_SLOTS:
+				var expand_cost: int = _get_effective_building_cost(int(GameConstants.BUILDING_COSTS.get("cat_house_expand", 60)))
+				lines.append("扩建费用：%d金（当前 %d金）" % [expand_cost, _game_state.coins])
 		"granary":
-			lines.append("🌾 粮仓")
+			var g_level: int = _game_state.get_building_level("granary")
+			lines.append("🌾 粮仓 Lv%d" % g_level)
 			lines.append("猫粮：%d / %d" % [_game_state.cat_food, _game_state.cat_food_cap])
+			if g_level < GameConstants.GRANARY_MAX_LEVEL:
+				var next_cap: int = int(GameConstants.GRANARY_FOOD_CAP_BY_LEVEL.get(g_level + 1, _game_state.cat_food_cap))
+				var upgrade_cost: int = int(GameConstants.GRANARY_UPGRADE_COSTS[g_level - 1])
+				lines.append("升级后粮仓上限：%d" % next_cap)
+				lines.append("升级费用：%d金（当前 %d金）" % [upgrade_cost, _game_state.coins])
+			else:
+				lines.append("✅ 已达最高等级")
 		"food_farm":
 			var farm_workers: String = _get_assigned_cats_text("food_farm")
+			var worker_cnt: int = _count_assigned_cats("food_farm")
+			var output: int = int(GameConstants.FOOD_FARM_OUTPUT_BY_WORKERS.get(worker_cnt, 0))
 			lines.append("🌱 猫粮田")
 			lines.append("工作猫：%s" % farm_workers)
+			lines.append("今日预计产粮：%d" % output)
 		"gold_mine":
 			var mine_workers: String = _get_assigned_cats_text("gold_mine")
+			var mine_cnt: int = _count_assigned_cats("gold_mine")
+			var mine_output: int = int(GameConstants.GOLD_MINE_OUTPUT_BY_WORKERS.get(mine_cnt, 0))
 			lines.append("⛏️ 金矿")
 			lines.append("工作猫：%s" % mine_workers)
+			lines.append("今日预计产金：%d" % mine_output)
 		"fortune_cat":
-			var fortune_workers: String = _get_assigned_cats_text("fortune_cat")
 			var fortune_level: int = int(_game_state.get_building_level("fortune_cat"))
 			var per_worker: int = int(GameConstants.FORTUNE_CAT_OUTPUT_PER_WORKER.get(fortune_level, 15))
 			var max_workers: int = int(GameConstants.FORTUNE_CAT_MAX_WORKERS_BY_LEVEL.get(fortune_level, 1))
+			var fortune_workers: String = _get_assigned_cats_text("fortune_cat")
 			lines.append("🪙 招财猫神龛 Lv%d" % fortune_level)
-			lines.append("工作猫：%d / %d" % [_count_assigned_cats("fortune_cat"), max_workers])
-			lines.append("分配猫：%s" % fortune_workers)
 			lines.append("每日产金：%d金/只" % per_worker)
+			lines.append("工作猫：%d / %d（%s）" % [_count_assigned_cats("fortune_cat"), max_workers, fortune_workers])
+			if fortune_level < GameConstants.FORTUNE_CAT_MAX_WORKERS_BY_LEVEL.size():
+				var fc_cost: int = int(GameConstants.FORTUNE_CAT_UPGRADE_COSTS[fortune_level - 1])
+				var next_max: int = int(GameConstants.FORTUNE_CAT_MAX_WORKERS_BY_LEVEL.get(fortune_level + 1, max_workers))
+				var next_out: int = int(GameConstants.FORTUNE_CAT_OUTPUT_PER_WORKER.get(fortune_level + 1, per_worker))
+				lines.append("升Lv%d：工作上限→%d，产金→%d金/只" % [fortune_level + 1, next_max, next_out])
+				lines.append("升级费用：%d金（当前 %d金）" % [fc_cost, _game_state.coins])
+			else:
+				lines.append("✅ 已达最高等级")
 		"nursery":
 			lines.append("🍼 产房")
 			lines.append("繁育成功率：%d%%" % int(GameConstants.BREED_SUCCESS_WITH_NURSERY * 100.0))
 		"hospital":
 			lines.append("🏥 医院")
+			lines.append("每天治愈在此工作的病猫")
 		"heart_cat_house":
 			lines.append("❤️ 爱心猫窝")
-			lines.append("流浪猫来访概率提升 +20%%")
+			lines.append("流浪猫来访概率提升 +20%")
 		"cemetery":
 			lines.append("🪦 墓地")
-	if building_id in ["fortune_cat", "food_farm", "gold_mine"]:
+			lines.append("记录已逝猫咪")
+	# 分配猫咪区域（产出建筑）
+	if building_id in ["fortune_cat", "food_farm", "gold_mine", "hospital", "nursery", "heart_cat_house"]:
 		lines.append("")
-		lines.append("── 分配猫咪 ──")
+		lines.append("── 分配猫咪（拖拽猫咪到建筑） ──")
 		for cat: CatData in _game_state.get_living_cats():
 			if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
 				continue
-			var mark: String = "✅" if str(cat.assigned_building) == building_id else "[ ]"
-			lines.append("%s %s (%s)" % [mark, cat.cat_name, GameConstants.profession_zh(cat.profession)])
+			var mark: String = "✅" if str(cat.assigned_building) == building_id else "  "
+			lines.append("%s %s（%s）" % [mark, cat.cat_name, GameConstants.profession_zh(cat.profession)])
 	_set_sidebar_text("\n".join(lines))
+	# ── 升级按钮 ──
+	_add_upgrade_buttons(building_id)
+
+func _add_upgrade_buttons(building_id: String) -> void:
+	match building_id:
+		"cat_house":
+			var slots: int = _game_state.cat_house_slots
+			if slots < GameConstants.MAX_CAT_HOUSE_SLOTS:
+				var cost: int = _get_effective_building_cost(int(GameConstants.BUILDING_COSTS.get("cat_house_expand", 60)))
+				var can_afford: bool = _game_state.coins >= cost
+				_add_action_button(
+					"🏠 扩建猫窝 -%d金（%d→%d格）" % [cost, slots, slots + 1],
+					_on_upgrade_building.bind("cat_house"),
+					can_afford
+				)
+		"granary":
+			var lv: int = _game_state.get_building_level("granary")
+			if lv < GameConstants.GRANARY_MAX_LEVEL:
+				var cost: int = int(GameConstants.GRANARY_UPGRADE_COSTS[lv - 1])
+				var next_cap: int = int(GameConstants.GRANARY_FOOD_CAP_BY_LEVEL.get(lv + 1, 0))
+				var can_afford: bool = _game_state.coins >= cost
+				_add_action_button(
+					"🌾 升级粮仓 Lv%d→%d -%d金（上限→%d）" % [lv, lv + 1, cost, next_cap],
+					_on_upgrade_building.bind("granary"),
+					can_afford
+				)
+		"fortune_cat":
+			var lv: int = _game_state.get_building_level("fortune_cat")
+			if lv < GameConstants.FORTUNE_CAT_MAX_WORKERS_BY_LEVEL.size():
+				var cost: int = int(GameConstants.FORTUNE_CAT_UPGRADE_COSTS[lv - 1])
+				var can_afford: bool = _game_state.coins >= cost
+				_add_action_button(
+					"🪙 升级神龛 Lv%d→%d -%d金" % [lv, lv + 1, cost],
+					_on_upgrade_building.bind("fortune_cat"),
+					can_afford
+				)
+
+func _on_upgrade_building(building_id: String) -> void:
+	if _game_state == null:
+		return
+	var success: bool = _game_state.upgrade_building(building_id)
+	if success:
+		_refresh_all()
+		# 刷新当前 sidebar 显示
+		_show_building_sidebar(building_id)
 
 func _get_assigned_cats_text(building_id: String) -> String:
 	var names: PackedStringArray = []
@@ -314,7 +392,33 @@ func _get_effective_building_cost(base_cost: int) -> int:
 			return int(base_cost * 0.80)
 	return base_cost
 
+func _init_action_btn_container() -> void:
+	# 在 CatListUI/VBox 下创建按钮容器（紧贴文字区域下方）
+	var vbox: Node = get_node_or_null("UI/CatListUI/VBox")
+	if vbox == null:
+		return
+	_action_btn_container = VBoxContainer.new()
+	_action_btn_container.name = "ActionButtons"
+	_action_btn_container.add_theme_constant_override("separation", 6)
+	vbox.add_child(_action_btn_container)
+
+func _clear_action_buttons() -> void:
+	if _action_btn_container == null:
+		return
+	for child in _action_btn_container.get_children():
+		child.queue_free()
+
+func _add_action_button(label: String, callback: Callable, enabled: bool = true) -> void:
+	if _action_btn_container == null:
+		return
+	var btn := Button.new()
+	btn.text = label
+	btn.disabled = not enabled
+	btn.pressed.connect(callback)
+	_action_btn_container.add_child(btn)
+
 func _set_sidebar_text(text: String) -> void:
+	_clear_action_buttons()
 	if _cat_list_text != null:
 		_cat_list_text.text = text
 

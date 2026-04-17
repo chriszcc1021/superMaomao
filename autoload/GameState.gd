@@ -269,3 +269,59 @@ func _opposite_sex(value: String) -> String:
 	if value == GameConstants.SEX_MALE:
 		return GameConstants.SEX_FEMALE
 	return GameConstants.SEX_MALE
+
+# ─── 建筑升级 ─────────────────────────────────────────────────────────────────
+
+## 返回升级是否成功
+func upgrade_building(building_id: String) -> bool:
+	match building_id:
+		"cat_house":
+			return _upgrade_cat_house()
+		"granary":
+			return _upgrade_granary()
+		"fortune_cat":
+			return _upgrade_fortune_cat()
+	return false
+
+func _upgrade_cat_house() -> bool:
+	if cat_house_slots >= GameConstants.MAX_CAT_HOUSE_SLOTS:
+		return false
+	var cost: int = int(GameConstants.BUILDING_COSTS.get("cat_house_expand", 60))
+	if coins < cost:
+		return false
+	coins -= cost
+	cat_house_slots += 1
+	coins_changed.emit(coins)
+	return true
+
+func _upgrade_granary() -> bool:
+	var current_level: int = get_building_level("granary")
+	if current_level >= GameConstants.GRANARY_MAX_LEVEL:
+		return false
+	var cost_idx: int = current_level - 1  # 0-based
+	if cost_idx < 0 or cost_idx >= GameConstants.GRANARY_UPGRADE_COSTS.size():
+		return false
+	var cost: int = int(GameConstants.GRANARY_UPGRADE_COSTS[cost_idx])
+	if coins < cost:
+		return false
+	coins -= cost
+	buildings_built["granary"] = current_level + 1
+	cat_food_cap = int(GameConstants.GRANARY_FOOD_CAP_BY_LEVEL.get(current_level + 1, cat_food_cap))
+	coins_changed.emit(coins)
+	cat_food_changed.emit(cat_food)
+	return true
+
+func _upgrade_fortune_cat() -> bool:
+	var current_level: int = get_building_level("fortune_cat")
+	if current_level >= GameConstants.FORTUNE_CAT_MAX_WORKERS_BY_LEVEL.size():
+		return false
+	var cost_idx: int = current_level - 1  # 0-based index into upgrade costs
+	if cost_idx < 0 or cost_idx >= GameConstants.FORTUNE_CAT_UPGRADE_COSTS.size():
+		return false
+	var cost: int = int(GameConstants.FORTUNE_CAT_UPGRADE_COSTS[cost_idx])
+	if coins < cost:
+		return false
+	coins -= cost
+	buildings_built["fortune_cat"] = current_level + 1
+	coins_changed.emit(coins)
+	return true

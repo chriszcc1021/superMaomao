@@ -110,7 +110,9 @@ const BUILDING_COSTS := {
 	"fortune_cat": 100
 }
 
-const GRANARY_UPGRADE_COSTS := [80, 160, 320, 600]
+const GRANARY_UPGRADE_COSTS := [80, 160, 320, 600]   # 升Lv2/3/4/5费用
+const GRANARY_MAX_LEVEL := 5
+const GRANARY_FOOD_CAP_BY_LEVEL := {1: 200, 2: 400, 3: 700, 4: 1200, 5: 2000}
 
 const PROFESSION_BASE := {
 	"sniper": {
