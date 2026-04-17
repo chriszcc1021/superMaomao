@@ -19,6 +19,8 @@ var _food_particles: Array = []
 
 # 拖拽状态
 var _dragging: bool = false
+# 防止 _pick_new_target await 被重复调用
+var _waiting_for_target: bool = false
 
 func _ready() -> void:
 	set_process(true)
@@ -27,10 +29,13 @@ func _ready() -> void:
 
 func setup(data: CatData) -> void:
 	cat_data = data
-	_move_speed = max(GameConstants.CAT_WANDER_MIN_MOVE_SPEED, cat_data.base_move_speed)
+	# 营地漫步速度固定为 45-65，与战斗速度分开，避免战斗提速影响营地动画
+	var wander_speed := clampf(cat_data.base_move_speed * 0.45, 35.0, 65.0)
+	_move_speed = maxf(GameConstants.CAT_WANDER_MIN_MOVE_SPEED, wander_speed)
 	if cat_data.base_move_speed <= 0.0:
 		cat_data.calculate_stats()
-		_move_speed = max(GameConstants.CAT_WANDER_MIN_MOVE_SPEED, cat_data.base_move_speed)
+		var ws := clampf(cat_data.base_move_speed * 0.45, 35.0, 65.0)
+		_move_speed = maxf(GameConstants.CAT_WANDER_MIN_MOVE_SPEED, ws)
 	_update_anim_state()
 	queue_redraw()
 
@@ -233,10 +238,14 @@ func _get_cat_color() -> Color:
 	return Color(0.95, 0.73, 0.28, 1.0)
 
 func _pick_new_target() -> void:
-	# 用 SceneTreeTimer + is_inside_tree 防止节点被 free 后协程继续跑
+	# 防止每帧触发多个并发 await 协程（核心 bug 修复）
+	if _waiting_for_target:
+		return
+	_waiting_for_target = true
 	var wait := randf_range(2.5, 5.0)
 	var timer := get_tree().create_timer(wait)
 	await timer.timeout
+	_waiting_for_target = false
 	if not is_inside_tree():
 		return
 	if _building_anchor.x <= -999.0 and not _dragging:
