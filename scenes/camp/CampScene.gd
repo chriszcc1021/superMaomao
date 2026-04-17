@@ -117,7 +117,8 @@ func _refresh_time_label() -> void:
 
 func _bind_signals() -> void:
 	if not _next_day_button.pressed.is_connected(_on_next_day_pressed):
-		_next_day_button.pressed.connect(_on_next_day_pressed)	if not _accept_stray_button.pressed.is_connected(_on_accept_stray_pressed):
+		_next_day_button.pressed.connect(_on_next_day_pressed)
+	if not _accept_stray_button.pressed.is_connected(_on_accept_stray_pressed):
 		_accept_stray_button.pressed.connect(_on_accept_stray_pressed)
 	if not _reject_stray_button.pressed.is_connected(_on_reject_stray_pressed):
 		_reject_stray_button.pressed.connect(_on_reject_stray_pressed)
@@ -266,7 +267,6 @@ func _camp_cat_has_gene(cat: CatData, gene_id: String) -> bool:
 func _set_sidebar_text(text: String) -> void:
 	# 直接用 cat_list_text 作为侧边栏展示（临时复用）
 	if _cat_list_text != null:
-		if _cat_list_text != null:
 		_cat_list_text.text = text
 
 func _on_cat_drop_requested(cat: CatData, world_pos: Vector2) -> void:

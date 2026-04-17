@@ -205,7 +205,6 @@ func _serialize_cats(game_state: Node) -> Array:
 	return arr
 
 func _deserialize_cats(game_state: Node, cats_data: Array) -> void:
-	var CatData := preload("res://resources/CatData.gd")
 	game_state.cats.clear()
 	for d: Dictionary in cats_data:
 		var cat := CatData.new()

@@ -389,7 +389,8 @@ func _show_gene_choice_popup() -> void:
 	title_lbl.text = "🎉 %s 升至 Lv%d！选择一个技能！" % [cat_name, _level]
 	title_lbl.add_theme_font_size_override("font_size", 16)
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_lbl.autowrap_mode = TextServer.AutowrapMode.AUTOWRAP_WORD_SMART
+	@warning_ignore("int_as_enum_without_cast")
+	title_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(title_lbl)
 
 	var sep := HSeparator.new()
@@ -403,7 +404,8 @@ func _show_gene_choice_popup() -> void:
 		var type_tag := "[主动]" if is_active else "[被动]"
 		var btn := Button.new()
 		btn.text = "%s【%s】%s\n%s" % [str(info.get("name", gene_id)), rarity_zh, type_tag, str(info.get("desc", ""))]
-		btn.autowrap_mode = TextServer.AutowrapMode.AUTOWRAP_WORD_SMART
+		@warning_ignore("int_as_enum_without_cast")
+	btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		btn.custom_minimum_size = Vector2(0.0, 60.0)
 		btn.pressed.connect(_on_gene_chosen.bind(gene_id))
 		vb.add_child(btn)
@@ -449,7 +451,8 @@ func _show_gene_replace_view(new_gene_id: String) -> void:
 	var info: Dictionary = GameConstants.GENE_DISPLAY_ZH.get(new_gene_id, {"name": new_gene_id})
 	var lbl := Label.new()
 	lbl.text = "技能槽已满，选择替换或放弃「%s」：" % str(info.get("name", new_gene_id))
-	lbl.autowrap_mode = TextServer.AutowrapMode.AUTOWRAP_WORD_SMART
+	@warning_ignore("int_as_enum_without_cast")
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(lbl)
 

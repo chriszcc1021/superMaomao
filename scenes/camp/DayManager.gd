@@ -1,7 +1,6 @@
 class_name DayManager
 extends RefCounted
 
-const CatFactory := preload("res://data/cat_factory.gd")
 
 func advance_day(game_state: Node, event_bus: Node) -> void:
 	if game_state == null:

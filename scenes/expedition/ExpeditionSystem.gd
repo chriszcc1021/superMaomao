@@ -1,7 +1,6 @@
 class_name ExpeditionSystem
 extends RefCounted
 
-const CatFactory := preload("res://data/cat_factory.gd")
 
 const NODE_PICK_ORDER := ["battle_normal", "battle_elite", "event_question", "shop"]
 const QUESTION_EVENT_ORDER := ["coin_bonus", "mystery_buff", "stray_kitten", "trouble", "story"]

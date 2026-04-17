@@ -96,7 +96,8 @@ func _build_card_slot(card_def: Dictionary, idx: int) -> PanelContainer:
 	name_label.text = str(card_def.get("name", "卡牌"))
 	name_label.add_theme_font_size_override("font_size", 14)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_label.autowrap_mode = TextServer.AutowrapMode.AUTOWRAP_WORD_SMART
+	@warning_ignore("int_as_enum_without_cast")
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(name_label)
 
 	var rarity_label := Label.new()
@@ -107,7 +108,8 @@ func _build_card_slot(card_def: Dictionary, idx: int) -> PanelContainer:
 
 	var desc_label := Label.new()
 	desc_label.text = str(card_def.get("description", ""))
-	desc_label.autowrap_mode = TextServer.AutowrapMode.AUTOWRAP_WORD_SMART
+	@warning_ignore("int_as_enum_without_cast")
+	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_label.add_theme_font_size_override("font_size", 11)
 	vb.add_child(desc_label)
 
