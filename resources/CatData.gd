@@ -1,7 +1,6 @@
 class_name CatData
 extends Resource
 
-const GameConstants := preload("res://data/constants.gd")
 
 @export var id: String = ""
 @export var cat_name: String = ""

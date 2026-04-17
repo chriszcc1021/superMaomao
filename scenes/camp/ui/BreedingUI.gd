@@ -1,7 +1,5 @@
 extends PanelContainer
 
-const GameConstants := preload("res://data/constants.gd")
-const CatData := preload("res://resources/CatData.gd")
 const BreedingSystem := preload("res://scenes/camp/BreedingSystem.gd")
 
 @onready var _father_option: OptionButton = $VBox/FatherRow/FatherOption

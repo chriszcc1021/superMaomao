@@ -1,6 +1,4 @@
 extends Control
-const GameConstants := preload("res://data/constants.gd")
-const CatData := preload("res://resources/CatData.gd")
 const ExpeditionSystem := preload("res://scenes/expedition/ExpeditionSystem.gd")
 @onready var _cat_option: OptionButton = $Panel/VBox/SetupRow/CatOption
 @onready var _start_button: Button = $Panel/VBox/SetupRow/StartButton

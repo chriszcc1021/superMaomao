@@ -153,7 +153,7 @@ func _try_load_save() -> void:
 		return
 	var text := file.get_as_text()
 	file.close()
-	var result := JSON.parse_string(text)
+	var result: Variant = JSON.parse_string(text)
 	if not (result is Dictionary):
 		return
 	var data: Dictionary = result

@@ -1,8 +1,6 @@
 class_name WeaponSystem
 extends Node
 
-const GameConstants := preload("res://data/constants.gd")
-const CardData := preload("res://resources/CardData.gd")
 const ProjectileScene := preload("res://scenes/battle/entities/Projectile.tscn")
 
 var _owner_cat: Node2D = null

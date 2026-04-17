@@ -1,7 +1,6 @@
 class_name SpawnManager
 extends Node
 
-const GameConstants := preload("res://data/constants.gd")
 const EnemyData := preload("res://data/enemies/enemy_data.gd")
 const EnemyScene := preload("res://scenes/battle/entities/Enemy.tscn")
 

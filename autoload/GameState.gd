@@ -1,7 +1,5 @@
 extends Node
 
-const GameConstants := preload("res://data/constants.gd")
-const CatData := preload("res://resources/CatData.gd")
 
 const DEFAULT_BUILDINGS_BUILT := {
 	"cat_house": true,

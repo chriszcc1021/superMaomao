@@ -1,7 +1,5 @@
 extends Control
 
-const CardData := preload("res://resources/CardData.gd")
-const GameConstants := preload("res://data/constants.gd")
 
 signal card_chosen(card: CardData)
 
