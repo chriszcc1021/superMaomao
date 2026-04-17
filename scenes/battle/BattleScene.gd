@@ -34,7 +34,6 @@ var _boss_target: Node = null
 var _gene_popup: Control = null
 var _pending_card_choices: Array[CardData] = []
 var _pending_first_level_up: bool = false
-var _pending_gene_to_add: String = ""  # 玩家选好的基因，等待写入槽
 
 func _ready() -> void:
 	randomize()
@@ -405,7 +404,7 @@ func _show_gene_choice_popup() -> void:
 		var btn := Button.new()
 		btn.text = "%s【%s】%s\n%s" % [str(info.get("name", gene_id)), rarity_zh, type_tag, str(info.get("desc", ""))]
 		@warning_ignore("int_as_enum_without_cast")
-	btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		btn.custom_minimum_size = Vector2(0.0, 60.0)
 		btn.pressed.connect(_on_gene_chosen.bind(gene_id))
 		vb.add_child(btn)
@@ -429,7 +428,6 @@ func _on_gene_chosen(gene_id: String) -> void:
 			_close_gene_popup_and_continue()
 			return
 	# 三槽全满 → 切换到替换界面
-	_pending_gene_to_add = gene_id
 	_show_gene_replace_view(gene_id)
 
 func _show_gene_replace_view(new_gene_id: String) -> void:
@@ -477,15 +475,6 @@ func _get_slot_gene(slot_idx: int) -> String:
 		1: return str(_selected_cat.gene_slot_2)
 		2: return str(_selected_cat.gene_slot_3)
 	return ""
-
-func _count_used_gene_slots() -> int:
-	if _selected_cat == null:
-		return 0
-	var count := 0
-	if str(_selected_cat.gene_slot_1) != "": count += 1
-	if str(_selected_cat.gene_slot_2) != "": count += 1
-	if str(_selected_cat.gene_slot_3) != "": count += 1
-	return count
 
 func _on_gene_replace_chosen(slot_idx: int, new_gene_id: String) -> void:
 	if _selected_cat != null:

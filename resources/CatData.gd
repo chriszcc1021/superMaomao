@@ -92,5 +92,9 @@ func set_special_gene(slot_idx: int, gene_id: String) -> void:
 func can_breed() -> bool:
 	return breed_count < GameConstants.MAX_BREED_COUNT and status != GameConstants.LIFECYCLE_STATUS_ELDER and status != GameConstants.LIFECYCLE_STATUS_DEAD
 
+## 检查猫是否拥有指定基因（三槽任一匹配）
+func has_gene(gene_id: String) -> bool:
+	return gene_id in [gene_slot_1, gene_slot_2, gene_slot_3]
+
 func _float_value(dict: Dictionary, key: String, fallback: float) -> float:
 	return float(dict.get(key, fallback))

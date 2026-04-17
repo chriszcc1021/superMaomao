@@ -54,14 +54,14 @@ var _is_night: bool = false
 @onready var _open_expedition_button: Button = $UI/SidePanel/VBox/OpenExpeditionButton
 @onready var _breeding_ui: Control = $UI/BreedingUI
 
-var GameState: Node = null
-var EventBus: Node = null
+var _game_state: Node = null
+var _event_bus: Node = null
 var _day_manager := DayManager.new()
 
 func _ready() -> void:
 	randomize()
-	GameState = get_node_or_null("/root/GameState")
-	EventBus = get_node_or_null("/root/EventBus")
+	_game_state = get_node_or_null("/root/GameState")
+	_event_bus = get_node_or_null("/root/EventBus")
 	_time_manager = get_node_or_null("/root/TimeManager")
 	_spawn_buildings()
 	_bind_signals()
@@ -128,14 +128,14 @@ func _bind_signals() -> void:
 		_open_breed_button.pressed.connect(_on_open_breeding_pressed)
 	if not _open_expedition_button.pressed.is_connected(_on_open_expedition_pressed):
 		_open_expedition_button.pressed.connect(_on_open_expedition_pressed)
-	if not GameState.coins_changed.is_connected(_on_game_coins_changed):
-		GameState.coins_changed.connect(_on_game_coins_changed)
-	if not GameState.cat_food_changed.is_connected(_on_game_cat_food_changed):
-		GameState.cat_food_changed.connect(_on_game_cat_food_changed)
-	if not GameState.cat_added.is_connected(_on_game_cat_added):
-		GameState.cat_added.connect(_on_game_cat_added)
+	if not _game_state.coins_changed.is_connected(_on_game_coins_changed):
+		_game_state.coins_changed.connect(_on_game_coins_changed)
+	if not _game_state.cat_food_changed.is_connected(_on_game_cat_food_changed):
+		_game_state.cat_food_changed.connect(_on_game_cat_food_changed)
+	if not _game_state.cat_added.is_connected(_on_game_cat_added):
+		_game_state.cat_added.connect(_on_game_cat_added)
 	if _breeding_ui.has_method("bind_game_state"):
-		_breeding_ui.call("bind_game_state", GameState)
+		_breeding_ui.call("bind_game_state", _game_state)
 
 func _spawn_buildings() -> void:
 	for child: Node in _buildings_root.get_children():
@@ -143,7 +143,7 @@ func _spawn_buildings() -> void:
 	for building_id: String in BUILDING_SCENES.keys():
 		var instance: Node2D = (BUILDING_SCENES[building_id] as PackedScene).instantiate()
 		instance.position = BUILDING_LAYOUT.get(building_id, Vector2.ZERO)
-		if not GameState.has_building(building_id):
+		if not _game_state.has_building(building_id):
 			instance.modulate = Color(1.0, 1.0, 1.0, 0.35)
 		# 添加点击区域，用于建筑交互和猫分配
 		var click_area := Area2D.new()
@@ -163,14 +163,14 @@ func _on_building_clicked(viewport: Node, event: InputEvent, _shape_idx: int, bu
 	var mb := event as InputEventMouseButton
 	if not (mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT):
 		return
-	if not GameState.has_building(building_id):
+	if not _game_state.has_building(building_id):
 		return
 	_show_building_sidebar(building_id)
 
 func _refresh_cat_nodes() -> void:
 	for child: Node in _cats_root.get_children():
 		child.queue_free()
-	for cat: CatData in GameState.get_living_cats():
+	for cat: CatData in _game_state.get_living_cats():
 		var cat_sprite: Node2D = CatSpriteScene.instantiate()
 		cat_sprite.global_position = _random_cat_spawn_position()
 		cat_sprite.call("setup", cat)
@@ -196,12 +196,12 @@ func _show_building_sidebar(building_id: String) -> void:
 	match building_id:
 		"cat_house":
 			lines.append("🏠 猫窝")
-			lines.append("已住：%d / %d" % [GameState.get_living_cats().size(), GameState.cat_house_slots])
+			lines.append("已住：%d / %d" % [_game_state.get_living_cats().size(), _game_state.cat_house_slots])
 			var expand_cost := _get_effective_building_cost(GameConstants.BUILDING_COSTS.get("cat_house_expand", 60))
 			lines.append("扩建费用：%d金" % expand_cost)
 		"granary":
 			lines.append("🌾 粮仓")
-			lines.append("猫粮：%d / %d" % [GameState.cat_food, GameState.cat_food_cap])
+			lines.append("猫粮：%d / %d" % [_game_state.cat_food, _game_state.cat_food_cap])
 		"food_farm":
 			var workers := _get_assigned_cats_text("food_farm")
 			lines.append("🌱 猫粮田")
@@ -213,7 +213,7 @@ func _show_building_sidebar(building_id: String) -> void:
 			lines.append("工作猫：%s" % workers)
 		"fortune_cat":
 			var workers := _get_assigned_cats_text("fortune_cat")
-			var level := GameState.get_building_level("fortune_cat")
+			var level := _game_state.get_building_level("fortune_cat")
 			var per := int(GameConstants.FORTUNE_CAT_OUTPUT_PER_WORKER.get(level, 15))
 			var max_w := int(GameConstants.FORTUNE_CAT_MAX_WORKERS_BY_LEVEL.get(level, 1))
 			lines.append("🪙 招财猫神龛 Lv%d" % level)
@@ -233,36 +233,34 @@ func _show_building_sidebar(building_id: String) -> void:
 	if building_id in ["fortune_cat", "food_farm", "gold_mine"]:
 		lines.append("")
 		lines.append("── 分配猫咪 ──")
-		for cat: CatData in GameState.get_living_cats():
+		for cat: CatData in _game_state.get_living_cats():
 			if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
 				continue
 			var mark := "✅" if str(cat.assigned_building) == building_id else "  "
-			lines.append("%s %s (%s)" % [mark, cat.cat_name, _profession_zh(cat.profession)])
+			lines.append("%s %s (%s)" % [mark, cat.cat_name, GameConstants.profession_zh(cat.profession)])
 	_set_sidebar_text("\n".join(lines))
 
 func _get_assigned_cats_text(building_id: String) -> String:
 	var names: PackedStringArray = []
-	for cat: CatData in GameState.get_living_cats():
+	for cat: CatData in _game_state.get_living_cats():
 		if str(cat.assigned_building) == building_id:
 			names.append(cat.cat_name)
 	return ", ".join(names) if not names.is_empty() else "无"
 
 func _count_assigned_cats(building_id: String) -> int:
 	var count := 0
-	for cat: CatData in GameState.get_living_cats():
+	for cat: CatData in _game_state.get_living_cats():
 		if str(cat.assigned_building) == building_id:
 			count += 1
 	return count
 
 # builder_discount：营地中有带此基因的猫时，建筑费用-20%
 func _get_effective_building_cost(base_cost: int) -> int:
-	for cat: CatData in GameState.get_living_cats():
-		if _camp_cat_has_gene(cat, "builder_discount"):
+	for cat: CatData in _game_state.get_living_cats():
+		if cat.has_gene("builder_discount"):
 			return int(base_cost * 0.80)
 	return base_cost
 
-func _camp_cat_has_gene(cat: CatData, gene_id: String) -> bool:
-	return gene_id in [str(cat.gene_slot_1), str(cat.gene_slot_2), str(cat.gene_slot_3)]
 
 func _set_sidebar_text(text: String) -> void:
 	# 直接用 cat_list_text 作为侧边栏展示（临时复用）
@@ -274,7 +272,7 @@ func _on_cat_drop_requested(cat: CatData, world_pos: Vector2) -> void:
 	var nearest_id := ""
 	var nearest_dist := 70.0
 	for building_id: String in BUILDING_LAYOUT.keys():
-		if not GameState.has_building(building_id):
+		if not _game_state.has_building(building_id):
 			continue
 		var dist := world_pos.distance_to(BUILDING_LAYOUT[building_id])
 		if dist < nearest_dist:
@@ -315,29 +313,27 @@ func _on_cat_drop_requested(cat: CatData, world_pos: Vector2) -> void:
 
 func _get_building_worker_cap(building_id: String) -> int:
 	if building_id == "fortune_cat":
-		var level := GameState.get_building_level("fortune_cat")
+		var level := _game_state.get_building_level("fortune_cat")
 		return int(GameConstants.FORTUNE_CAT_MAX_WORKERS_BY_LEVEL.get(level, 1))
 	var base_cap = GameConstants.BUILDING_WORKER_CAP.get(building_id, null)
 	if base_cap != null:
 		return int(base_cap)
 	return 999  # 无上限（猫窝、粮仓、墓地等）
-	_day_manager.advance_day(GameState, EventBus)
-	_refresh_all()
 
 func _on_accept_stray_pressed() -> void:
-	if GameState.stray_cat_queue.is_empty():
+	if _game_state.stray_cat_queue.is_empty():
 		return
-	if not GameState.has_free_cat_house_slot():
+	if not _game_state.has_free_cat_house_slot():
 		_stray_label.text = "猫窝已满，请先扩建猫窝。"
 		return
-	var cat: CatData = GameState.dequeue_stray_cat()
-	GameState.add_cat(cat)
+	var cat: CatData = _game_state.dequeue_stray_cat()
+	_game_state.add_cat(cat)
 	_refresh_all()
 
 func _on_reject_stray_pressed() -> void:
-	if GameState.stray_cat_queue.is_empty():
+	if _game_state.stray_cat_queue.is_empty():
 		return
-	GameState.dequeue_stray_cat()
+	_game_state.dequeue_stray_cat()
 	_refresh_stray_ui()
 
 func _on_defer_stray_pressed() -> void:
@@ -358,16 +354,16 @@ func _refresh_all() -> void:
 	_refresh_stray_ui()
 
 func _refresh_hud() -> void:
-	_coins_label.text = "金币: %d" % GameState.coins
-	_food_label.text = "猫粮: %d/%d" % [GameState.cat_food, GameState.cat_food_cap]
+	_coins_label.text = "金币: %d" % _game_state.coins
+	_food_label.text = "猫粮: %d/%d" % [_game_state.cat_food, _game_state.cat_food_cap]
 	# 时间标签在 _refresh_time_label() 里实时更新，这里不需要重复设置
 
 func _refresh_cat_list() -> void:
 	var lines: PackedStringArray = []
-	for cat: CatData in GameState.cats:
+	for cat: CatData in _game_state.cats:
 		lines.append(
 			"%s | %s | %s | 年龄%d天 | %s"
-			% [cat.cat_name, _profession_zh(cat.profession), _breed_zh(cat.breed), cat.age_days, _status_zh(cat.status)]
+			% [cat.cat_name, GameConstants.profession_zh(cat.profession), GameConstants.breed_zh(cat.breed), cat.age_days, _status_zh(cat.status)]
 		)
 	if lines.is_empty():
 		_cat_list_text.text = "营地里暂无猫咪。"
@@ -375,15 +371,15 @@ func _refresh_cat_list() -> void:
 	_cat_list_text.text = "\n".join(lines)
 
 func _refresh_stray_ui() -> void:
-	_stray_panel.visible = not GameState.stray_cat_queue.is_empty()
-	if GameState.stray_cat_queue.is_empty():
+	_stray_panel.visible = not _game_state.stray_cat_queue.is_empty()
+	if _game_state.stray_cat_queue.is_empty():
 		return
-	var head: CatData = GameState.stray_cat_queue[0]
+	var head: CatData = _game_state.stray_cat_queue[0]
 	_stray_label.text = "流浪猫来访：%s，%s / %s\n队列：%d/%d" % [
 		head.cat_name,
-		_profession_zh(head.profession),
-		_breed_zh(head.breed),
-		GameState.stray_cat_queue.size(),
+		GameConstants.profession_zh(head.profession),
+		GameConstants.breed_zh(head.breed),
+		_game_state.stray_cat_queue.size(),
 		GameConstants.MAX_STRAY_QUEUE_SIZE
 	]
 
@@ -397,11 +393,6 @@ func _on_game_cat_added(_cat: CatData) -> void:
 	_refresh_cat_list()
 	_refresh_cat_nodes()
 
-func _profession_zh(profession_id: String) -> String:
-	return str(GameConstants.PROFESSION_DISPLAY_ZH.get(profession_id, profession_id))
-
-func _breed_zh(breed_id: String) -> String:
-	return str(GameConstants.BREED_DISPLAY_ZH.get(breed_id, breed_id))
 
 func _status_zh(status_id: String) -> String:
 	return str(STATUS_DISPLAY_ZH.get(status_id, status_id))

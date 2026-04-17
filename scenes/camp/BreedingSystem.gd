@@ -25,7 +25,7 @@ func breed(father: CatData, mother: CatData, child_breed: String, child_professi
 
 	# breeding_expert：父母任一有此基因，特殊基因继承率+10%
 	var expert_bonus: float = 0.0
-	if _cat_has_gene(father, "breeding_expert") or _cat_has_gene(mother, "breeding_expert"):
+	if father.has_gene("breeding_expert") or mother.has_gene("breeding_expert"):
 		expert_bonus = 0.10
 	offspring.gene_slot_1 = _inherit_special_gene(father.gene_slot_1, mother.gene_slot_1, expert_bonus)
 	offspring.gene_slot_2 = _inherit_special_gene(father.gene_slot_2, mother.gene_slot_2, expert_bonus)
@@ -87,5 +87,3 @@ func _inherit_special_gene(father_gene: String, mother_gene: String, expert_bonu
 		return ""
 	return str(GameConstants.ALL_SPECIAL_GENE_POOL[randi() % GameConstants.ALL_SPECIAL_GENE_POOL.size()])
 
-func _cat_has_gene(cat: CatData, gene_id: String) -> bool:
-	return gene_id in [str(cat.gene_slot_1), str(cat.gene_slot_2), str(cat.gene_slot_3)]

@@ -38,11 +38,11 @@ func bind_game_state(state_node: Node) -> void:
 func _bind_static_options() -> void:
 	_breed_option.clear()
 	for breed_id: String in GameConstants.BREED_MODIFIERS.keys():
-		_breed_option.add_item(_breed_zh(breed_id))
+		_breed_option.add_item(GameConstants.breed_zh(breed_id))
 		_breed_option.set_item_metadata(_breed_option.item_count - 1, breed_id)
 	_profession_option.clear()
 	for profession_id: String in GameConstants.PROFESSION_BASE.keys():
-		_profession_option.add_item(_profession_zh(profession_id))
+		_profession_option.add_item(GameConstants.profession_zh(profession_id))
 		_profession_option.set_item_metadata(_profession_option.item_count - 1, profession_id)
 
 func _refresh_parent_options() -> void:
@@ -51,7 +51,7 @@ func _refresh_parent_options() -> void:
 	_available_cats = _collect_breedable_cats()
 	for i in _available_cats.size():
 		var cat: CatData = _available_cats[i]
-		var label := "%s，%s/%s" % [cat.cat_name, _profession_zh(cat.profession), _breed_zh(cat.breed)]
+		var label := "%s，%s/%s" % [cat.cat_name, GameConstants.profession_zh(cat.profession), GameConstants.breed_zh(cat.breed)]
 		_father_option.add_item(label, i)
 		_mother_option.add_item(label, i)
 	_confirm_button.disabled = _available_cats.size() < 2
@@ -113,7 +113,7 @@ func _on_confirm_pressed() -> void:
 		return
 	var chance := GameConstants.BREED_SUCCESS_WITH_NURSERY if _game_state.has_building("nursery") else GameConstants.BREED_SUCCESS_WITHOUT_NURSERY
 	# love_spreader：父本或母本有此基因，繁育成功率+15%
-	if _cat_has_gene(father, "love_spreader") or _cat_has_gene(mother, "love_spreader"):
+	if father.has_gene("love_spreader") or mother.has_gene("love_spreader"):
 		chance = min(1.0, chance + 0.15)
 	if randf() > chance:
 		_status_label.text = "今日繁育失败。"
@@ -154,11 +154,4 @@ func _selected_parent(option: OptionButton) -> CatData:
 	var idx := clampi(option.selected, 0, _available_cats.size() - 1)
 	return _available_cats[idx]
 
-func _profession_zh(profession_id: String) -> String:
-	return str(GameConstants.PROFESSION_DISPLAY_ZH.get(profession_id, profession_id))
 
-func _breed_zh(breed_id: String) -> String:
-	return str(GameConstants.BREED_DISPLAY_ZH.get(breed_id, breed_id))
-
-func _cat_has_gene(cat: CatData, gene_id: String) -> bool:
-	return gene_id in [str(cat.gene_slot_1), str(cat.gene_slot_2), str(cat.gene_slot_3)]

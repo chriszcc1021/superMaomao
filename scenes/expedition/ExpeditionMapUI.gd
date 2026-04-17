@@ -27,7 +27,7 @@ func _refresh_cat_options() -> void:
 		return
 	var idx := 0
 	for cat: CatData in game_state.get_living_cats():
-		var label := "%s，%s/%s" % [cat.cat_name, _profession_zh(cat.profession), _breed_zh(cat.breed)]
+		var label := "%s，%s/%s" % [cat.cat_name, GameConstants.profession_zh(cat.profession), GameConstants.breed_zh(cat.breed)]
 		_cat_option.add_item(label, idx)
 		idx += 1
 
@@ -183,11 +183,6 @@ func _node_label(node_type: String) -> String:
 		_:
 			return "节点"
 
-func _profession_zh(profession_id: String) -> String:
-	return str(GameConstants.PROFESSION_DISPLAY_ZH.get(profession_id, profession_id))
-
-func _breed_zh(breed_id: String) -> String:
-	return str(GameConstants.BREED_DISPLAY_ZH.get(breed_id, breed_id))
 
 func _expedition_buffs_text(buffs: Array) -> String:
 	if buffs.is_empty():

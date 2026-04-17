@@ -23,7 +23,7 @@ func _consume_cat_food(game_state: Node) -> void:
 		else:
 			base_cost = GameConstants.FOOD_CONSUMPTION_ADULT
 		# big_belly：自身猫粮消耗-25%
-		if _cat_has_gene(cat, "big_belly"):
+		if cat.has_gene("big_belly"):
 			base_cost = int(ceil(base_cost * 0.75))
 		total_cost += base_cost
 	if total_cost <= 0:
@@ -89,7 +89,7 @@ func _produce_resources(game_state: Node) -> void:
 
 	# golden_paw：每天额外产金
 	for cat: CatData in game_state.get_living_cats():
-		if _cat_has_gene(cat, "golden_paw"):
+		if cat.has_gene("golden_paw"):
 			game_state.add_coins(8)
 
 	# 医院：mini_nurse 治疗效果
@@ -105,16 +105,16 @@ func _apply_worker_gene_bonus(game_state: Node, building_id: String, base_amount
 			continue
 		if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
 			continue
-		if _cat_has_gene(cat, "hard_worker"):
+		if cat.has_gene("hard_worker"):
 			mult += 0.20
-		if building_id == "gold_mine" and _cat_has_gene(cat, "walnut_cracker"):
+		if building_id == "gold_mine" and cat.has_gene("walnut_cracker"):
 			mult += 0.30
 	return int(base_amount * mult)
 
 func _calc_community_planner_bonus(game_state: Node) -> float:
 	var planner_present := false
 	for cat: CatData in game_state.get_living_cats():
-		if _cat_has_gene(cat, "community_planner"):
+		if cat.has_gene("community_planner"):
 			planner_present = true
 			break
 	if not planner_present:
@@ -133,7 +133,7 @@ func _process_hospital_healing(game_state: Node) -> void:
 	# mini_nurse 加成
 	var hospital_workers_with_mini_nurse := 0
 	for cat: CatData in game_state.get_living_cats():
-		if str(cat.assigned_building) == "hospital" and _cat_has_gene(cat, "mini_nurse"):
+		if str(cat.assigned_building) == "hospital" and cat.has_gene("mini_nurse"):
 			hospital_workers_with_mini_nurse += 1
 	if hospital_workers_with_mini_nurse > 0:
 		heal_rate = 1.5
@@ -203,7 +203,7 @@ func _roll_stray_cat(game_state: Node, event_bus: Node) -> void:
 		chance = min(1.0, chance + GameConstants.HEART_CAT_HOUSE_STRAY_CHANCE_BONUS)
 	# lucky_cat：任一猫有此基因，流浪猫来访概率+15%
 	for cat: CatData in game_state.get_living_cats():
-		if _cat_has_gene(cat, "lucky_cat"):
+		if cat.has_gene("lucky_cat"):
 			chance = min(1.0, chance + 0.15)
 			break
 	if randf() > chance:
@@ -214,5 +214,3 @@ func _roll_stray_cat(game_state: Node, event_bus: Node) -> void:
 	if event_bus != null:
 		event_bus.stray_cat_arrived.emit(stray_cat)
 
-func _cat_has_gene(cat: CatData, gene_id: String) -> bool:
-	return gene_id in [str(cat.gene_slot_1), str(cat.gene_slot_2), str(cat.gene_slot_3)]

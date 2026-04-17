@@ -406,3 +406,10 @@ const QUESTION_EVENT_PROBABILITIES := {
 	"trouble": 0.15,
 	"story": 0.10
 }
+
+## ─── 翻译 helper（消灭各场景重复的 _profession_zh/_breed_zh）───
+static func profession_zh(id: String) -> String:
+	return str(PROFESSION_DISPLAY_ZH.get(id, id))
+
+static func breed_zh(id: String) -> String:
+	return str(BREED_DISPLAY_ZH.get(id, id))

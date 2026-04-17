@@ -69,7 +69,7 @@ func _update_anim_state() -> void:
 		_anim_state = "expedition"
 		return
 	# 夜晚强制睡觉
-	var time_manager := Engine.get_singleton("TimeManager") if Engine.has_singleton("TimeManager") else get_node_or_null("/root/TimeManager")
+	var time_manager := get_node_or_null("/root/TimeManager")
 	if time_manager != null and not bool(time_manager.get("is_daytime")):
 		_anim_state = "sleep"
 		return
@@ -233,9 +233,13 @@ func _get_cat_color() -> Color:
 	return Color(0.95, 0.73, 0.28, 1.0)
 
 func _pick_new_target() -> void:
+	# 用 SceneTreeTimer + is_inside_tree 防止节点被 free 后协程继续跑
 	var wait := randf_range(2.5, 5.0)
-	await get_tree().create_timer(wait).timeout
-	if is_inside_tree() and _building_anchor.x <= -999.0 and not _dragging:
+	var timer := get_tree().create_timer(wait)
+	await timer.timeout
+	if not is_inside_tree():
+		return
+	if _building_anchor.x <= -999.0 and not _dragging:
 		var x := randf_range(wander_rect.position.x, wander_rect.end.x)
 		var y := randf_range(wander_rect.position.y, wander_rect.end.y)
 		_target_position = Vector2(x, y)

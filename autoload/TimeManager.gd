@@ -35,7 +35,11 @@ var expedition_days_elapsed: float = 0.0
 # 是否处于远征中（由 BattleScene/ExpeditionScene 设置）
 var in_expedition: bool = false
 
+# DayManager 单例复用（避免每天 new）
+var _day_manager: RefCounted = null
+
 func _ready() -> void:
+	_day_manager = preload("res://scenes/camp/DayManager.gd").new()
 	_try_load_save()
 
 func _process(delta: float) -> void:
@@ -111,9 +115,8 @@ func _trigger_day_production() -> void:
 	var game_state := _get_game_state()
 	if game_state == null:
 		return
-	var dm := preload("res://scenes/camp/DayManager.gd").new()
 	var event_bus := get_node_or_null("/root/EventBus")
-	dm.advance_day(game_state, event_bus)
+	_day_manager.advance_day(game_state, event_bus)
 
 ## ─── 存读档 ───────────────────────────────
 
