@@ -114,6 +114,9 @@ func _on_confirm_pressed() -> void:
 		_status_label.text = "猫窝已满，无法繁育。"
 		return
 	var chance := GameConstants.BREED_SUCCESS_WITH_NURSERY if _game_state.has_building("nursery") else GameConstants.BREED_SUCCESS_WITHOUT_NURSERY
+	# love_spreader：父本或母本有此基因，繁育成功率+15%
+	if _cat_has_gene(father, "love_spreader") or _cat_has_gene(mother, "love_spreader"):
+		chance = min(1.0, chance + 0.15)
 	if randf() > chance:
 		_status_label.text = "今日繁育失败。"
 		return
@@ -158,3 +161,6 @@ func _profession_zh(profession_id: String) -> String:
 
 func _breed_zh(breed_id: String) -> String:
 	return str(GameConstants.BREED_DISPLAY_ZH.get(breed_id, breed_id))
+
+func _cat_has_gene(cat: CatData, gene_id: String) -> bool:
+	return gene_id in [str(cat.gene_slot_1), str(cat.gene_slot_2), str(cat.gene_slot_3)]

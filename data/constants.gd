@@ -79,7 +79,18 @@ const GENE_DISPLAY_ZH := {
 	"berserk_factor":   {"name": "狂暴因子",   "desc": "攻速提升20%，但防御降低10%"},
 	"lone_pride":       {"name": "独行骄傲",   "desc": "场上敌人少于3只时，伤害提升40%"},
 	"coward":           {"name": "胆小鬼",     "desc": "与敌人距离越远伤害越高（最高+35%）"},
-	"sleepyhead":       {"name": "嗜睡猫",     "desc": "停止移动3秒后，下次攻击伤害翻倍"}
+	"sleepyhead":       {"name": "嗜睡猫",     "desc": "停止移动3秒后，下次攻击伤害翻倍"},
+	# ── 营地后勤被动（补全）──
+	"hard_worker":      {"name": "勤劳能手",   "desc": "在建筑工作时产出+20%"},
+	"golden_paw":       {"name": "金爪子",     "desc": "每天额外产出8金币"},
+	"mini_nurse":       {"name": "小护士",     "desc": "在医院工作时治疗效果x1.5"},
+	"love_spreader":    {"name": "情缘扩散",   "desc": "作为父本或母本时，繁育成功率+15%"},
+	"big_belly":        {"name": "大肚王",     "desc": "自身每日猫粮消耗-25%"},
+	"lucky_cat":        {"name": "招财喵",     "desc": "营地内流浪猫来访概率+15%"},
+	"breeding_expert":  {"name": "繁育专家",   "desc": "作为父/母本时，特殊基因遗传概率+10%"},
+	"walnut_cracker":   {"name": "核桃壳",     "desc": "在金矿工作时产金额外+30%"},
+	"builder_discount": {"name": "精打细算",   "desc": "营地中有此猫时，所有建筑费用-20%"},
+	"community_planner":{"name": "社区规划师", "desc": "在岗猫每只为全场产出+2%（最多+10%）"}
 }
 
 const BUILDING_COSTS := {

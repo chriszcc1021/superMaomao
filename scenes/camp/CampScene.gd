@@ -198,7 +198,8 @@ func _show_building_sidebar(building_id: String) -> void:
 		"cat_house":
 			lines.append("🏠 猫窝")
 			lines.append("已住：%d / %d" % [GameState.get_living_cats().size(), GameState.cat_house_slots])
-			lines.append("扩建费用：%d金" % GameConstants.BUILDING_COSTS.get("cat_house_expand", 60))
+			var expand_cost := _get_effective_building_cost(GameConstants.BUILDING_COSTS.get("cat_house_expand", 60))
+			lines.append("扩建费用：%d金" % expand_cost)
 		"granary":
 			lines.append("🌾 粮仓")
 			lines.append("猫粮：%d / %d" % [GameState.cat_food, GameState.cat_food_cap])
@@ -253,6 +254,16 @@ func _count_assigned_cats(building_id: String) -> int:
 		if str(cat.assigned_building) == building_id:
 			count += 1
 	return count
+
+# builder_discount：营地中有带此基因的猫时，建筑费用-20%
+func _get_effective_building_cost(base_cost: int) -> int:
+	for cat: CatData in GameState.get_living_cats():
+		if _camp_cat_has_gene(cat, "builder_discount"):
+			return int(base_cost * 0.80)
+	return base_cost
+
+func _camp_cat_has_gene(cat: CatData, gene_id: String) -> bool:
+	return gene_id in [str(cat.gene_slot_1), str(cat.gene_slot_2), str(cat.gene_slot_3)]
 
 func _set_sidebar_text(text: String) -> void:
 	# 直接用 cat_list_text 作为侧边栏展示（临时复用）

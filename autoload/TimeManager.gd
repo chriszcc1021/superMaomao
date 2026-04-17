@@ -122,6 +122,7 @@ func _save_game() -> void:
 	if game_state == null:
 		return
 	var data := {
+		"save_version": 1,
 		"time_of_day": time_of_day,
 		"total_days": total_days,
 		"coins": game_state.coins,
@@ -156,6 +157,8 @@ func _try_load_save() -> void:
 	if not (result is Dictionary):
 		return
 	var data: Dictionary = result
+	# save_version 兼容处理（未来字段迁移用）
+	var _sv := int(data.get("save_version", 0))
 	time_of_day = float(data.get("time_of_day", 0.0))
 	total_days = int(data.get("total_days", 0))
 	is_daytime = time_of_day < DAY_FRACTION
