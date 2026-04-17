@@ -28,11 +28,11 @@ const BUILDING_LAYOUT := {
 }
 
 const STATUS_DISPLAY := {
-	GameConstants.LIFECYCLE_STATUS_IDLE: "Idle",
-	GameConstants.LIFECYCLE_STATUS_EXPEDITION: "Expedition",
-	GameConstants.LIFECYCLE_STATUS_RETIRED: "Retired",
-	GameConstants.LIFECYCLE_STATUS_ELDER: "Elder",
-	GameConstants.LIFECYCLE_STATUS_DEAD: "Dead",
+	GameConstants.LIFECYCLE_STATUS_IDLE: "待命",
+	GameConstants.LIFECYCLE_STATUS_EXPEDITION: "远征中",
+	GameConstants.LIFECYCLE_STATUS_RETIRED: "退休",
+	GameConstants.LIFECYCLE_STATUS_ELDER: "老年",
+	GameConstants.LIFECYCLE_STATUS_DEAD: "死亡",
 }
 
 @onready var _buildings_root: Node2D = $IsometricWorld/Buildings
@@ -120,8 +120,8 @@ func _refresh_time_label() -> void:
 	if _time_manager == null or _day_label == null:
 		return
 	var time_label: String = str(_time_manager.get_time_label())
-	var paused_tag: String = " [Paused]" if bool(_time_manager.time_paused) else ""
-	_day_label.text = "Day %d %s%s" % [int(_time_manager.total_days) + 1, time_label, paused_tag]
+	var paused_tag: String = " ⏸" if bool(_time_manager.time_paused) else ""
+	_day_label.text = "第%d天 %s%s" % [int(_time_manager.total_days) + 1, time_label, paused_tag]
 
 func _bind_signals() -> void:
 	if not _next_day_button.pressed.is_connected(_on_next_day_pressed):
@@ -207,47 +207,47 @@ func _show_building_sidebar(building_id: String) -> void:
 	var lines: PackedStringArray = []
 	match building_id:
 		"cat_house":
-			lines.append("Cat House")
-			lines.append("Occupancy: %d / %d" % [_game_state.get_living_cats().size(), _game_state.cat_house_slots])
+			lines.append("🏠 猫窝")
+			lines.append("已住：%d / %d" % [_game_state.get_living_cats().size(), _game_state.cat_house_slots])
 			var expand_cost: int = _get_effective_building_cost(int(GameConstants.BUILDING_COSTS.get("cat_house_expand", 60)))
-			lines.append("Expand cost: %d coins" % expand_cost)
+			lines.append("扩建费用：%d金" % expand_cost)
 		"granary":
-			lines.append("Granary")
-			lines.append("Food: %d / %d" % [_game_state.cat_food, _game_state.cat_food_cap])
+			lines.append("🌾 粮仓")
+			lines.append("猫粮：%d / %d" % [_game_state.cat_food, _game_state.cat_food_cap])
 		"food_farm":
 			var farm_workers: String = _get_assigned_cats_text("food_farm")
-			lines.append("Food Farm")
-			lines.append("Workers: %s" % farm_workers)
+			lines.append("🌱 猫粮田")
+			lines.append("工作猫：%s" % farm_workers)
 		"gold_mine":
 			var mine_workers: String = _get_assigned_cats_text("gold_mine")
-			lines.append("Gold Mine")
-			lines.append("Workers: %s" % mine_workers)
+			lines.append("⛏️ 金矿")
+			lines.append("工作猫：%s" % mine_workers)
 		"fortune_cat":
 			var fortune_workers: String = _get_assigned_cats_text("fortune_cat")
 			var fortune_level: int = int(_game_state.get_building_level("fortune_cat"))
 			var per_worker: int = int(GameConstants.FORTUNE_CAT_OUTPUT_PER_WORKER.get(fortune_level, 15))
 			var max_workers: int = int(GameConstants.FORTUNE_CAT_MAX_WORKERS_BY_LEVEL.get(fortune_level, 1))
-			lines.append("Fortune Cat Lv%d" % fortune_level)
-			lines.append("Workers: %d / %d" % [_count_assigned_cats("fortune_cat"), max_workers])
-			lines.append("Assigned: %s" % fortune_workers)
-			lines.append("Daily output: %d coins each" % per_worker)
+			lines.append("🪙 招财猫神龛 Lv%d" % fortune_level)
+			lines.append("工作猫：%d / %d" % [_count_assigned_cats("fortune_cat"), max_workers])
+			lines.append("分配猫：%s" % fortune_workers)
+			lines.append("每日产金：%d金/只" % per_worker)
 		"nursery":
-			lines.append("Nursery")
-			lines.append("Breeding success: %d%%" % int(GameConstants.BREED_SUCCESS_WITH_NURSERY * 100.0))
+			lines.append("🍼 产房")
+			lines.append("繁育成功率：%d%%" % int(GameConstants.BREED_SUCCESS_WITH_NURSERY * 100.0))
 		"hospital":
-			lines.append("Hospital")
+			lines.append("🏥 医院")
 		"heart_cat_house":
-			lines.append("Heart Cat House")
-			lines.append("Stray cat chance bonus: +20%%")
+			lines.append("❤️ 爱心猫窝")
+			lines.append("流浪猫来访概率提升 +20%%")
 		"cemetery":
-			lines.append("Cemetery")
+			lines.append("🪦 墓地")
 	if building_id in ["fortune_cat", "food_farm", "gold_mine"]:
 		lines.append("")
-		lines.append("Assignments")
+		lines.append("── 分配猫咪 ──")
 		for cat: CatData in _game_state.get_living_cats():
 			if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
 				continue
-			var mark: String = "[x]" if str(cat.assigned_building) == building_id else "[ ]"
+			var mark: String = "✅" if str(cat.assigned_building) == building_id else "[ ]"
 			lines.append("%s %s (%s)" % [mark, cat.cat_name, GameConstants.profession_zh(cat.profession)])
 	_set_sidebar_text("\n".join(lines))
 
@@ -256,7 +256,7 @@ func _get_assigned_cats_text(building_id: String) -> String:
 	for cat: CatData in _game_state.get_living_cats():
 		if str(cat.assigned_building) == building_id:
 			names.append(cat.cat_name)
-	return ", ".join(names) if not names.is_empty() else "None"
+	return ", ".join(names) if not names.is_empty() else "无"
 
 func _count_assigned_cats(building_id: String) -> int:
 	var count: int = 0
@@ -330,7 +330,7 @@ func _on_accept_stray_pressed() -> void:
 	if _game_state.stray_cat_queue.is_empty():
 		return
 	if not _game_state.has_free_cat_house_slot():
-		_stray_label.text = "Cat house is full."
+		_stray_label.text = "猫窝已满，请先扩建猫窝。"
 		return
 	var cat: CatData = _game_state.dequeue_stray_cat()
 	_game_state.add_cat(cat)
@@ -361,15 +361,15 @@ func _refresh_all() -> void:
 	_refresh_starter_overlay()
 
 func _refresh_hud() -> void:
-	_coins_label.text = "Coins: %d" % _game_state.coins
-	_food_label.text = "Food: %d/%d" % [_game_state.cat_food, _game_state.cat_food_cap]
+	_coins_label.text = "金币: %d" % _game_state.coins
+	_food_label.text = "猫粮: %d/%d" % [_game_state.cat_food, _game_state.cat_food_cap]
 	_refresh_time_label()
 
 func _refresh_cat_list() -> void:
 	var lines: PackedStringArray = []
 	for cat: CatData in _game_state.cats:
 		lines.append(
-			"%s | %s | %s | %s | Age %d | %s"
+			"%s | %s | %s | %s | %d天 | %s"
 			% [
 				cat.cat_name,
 				GameConstants.sex_display(cat.sex),
@@ -380,7 +380,7 @@ func _refresh_cat_list() -> void:
 			]
 		)
 	if lines.is_empty():
-		_cat_list_text.text = "Choose your first cat to begin."
+		_cat_list_text.text = "选择你的第一只猫开始游戏。"
 		return
 	_cat_list_text.text = "\n".join(lines)
 
@@ -389,7 +389,7 @@ func _refresh_stray_ui() -> void:
 	if _game_state.stray_cat_queue.is_empty():
 		return
 	var head: CatData = _game_state.stray_cat_queue[0]
-	_stray_label.text = "Stray cat: %s, %s, %s / %s\nQueue: %d/%d" % [
+	_stray_label.text = "流浪猫来访：%s %s %s/%s\n队列：%d/%d" % [
 		head.cat_name,
 		GameConstants.sex_display(head.sex),
 		GameConstants.profession_zh(head.profession),
@@ -410,7 +410,7 @@ func _on_game_cat_added(_cat: CatData) -> void:
 
 func _on_stray_cat_arrived(_cat: CatData) -> void:
 	_refresh_stray_ui()
-	_set_sidebar_text("A new stray cat has arrived at camp.")
+	_set_sidebar_text("一只流浪猫到访营地！")
 
 func _status_zh(status_id: String) -> String:
 	return str(STATUS_DISPLAY.get(status_id, status_id))
@@ -418,23 +418,23 @@ func _status_zh(status_id: String) -> String:
 func _building_display_name(building_id: String) -> String:
 	match building_id:
 		"cat_house":
-			return "Cat House"
+			return "猫窝"
 		"granary":
-			return "Granary"
+			return "粮仓"
 		"food_farm":
-			return "Food Farm"
+			return "猫粮田"
 		"gold_mine":
-			return "Gold Mine"
+			return "金矿"
 		"nursery":
-			return "Nursery"
+			return "产房"
 		"hospital":
-			return "Hospital"
+			return "医院"
 		"heart_cat_house":
-			return "Heart House"
+			return "爱心猫窝"
 		"cemetery":
-			return "Cemetery"
+			return "墓地"
 		"fortune_cat":
-			return "Fortune Cat"
+			return "招财猫"
 	return building_id
 
 func _build_starter_overlay() -> void:
@@ -466,12 +466,12 @@ func _build_starter_overlay() -> void:
 	panel.add_child(root)
 
 	var title := Label.new()
-	title.text = "Choose Your First Cat"
+	title.text = "选择你的第一只猫"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(title)
 
 	var hint := Label.new()
-	hint.text = "Pick 1 of 3 starter cats. A second opposite-sex stray cat will visit camp shortly after."
+	hint.text = "从三只候选猫中选一只。选完后，一只异性流浪猫将很快到访营地。"
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root.add_child(hint)
@@ -523,7 +523,7 @@ func _starter_button_text(cat: CatData) -> String:
 	var traits: PackedStringArray = []
 	for gene_id: String in cat.get_special_genes():
 		traits.append(gene_id)
-	var trait_text := ", ".join(traits) if not traits.is_empty() else "None"
+	var trait_text := ", ".join(traits) if not traits.is_empty() else "无"
 	return "%s\n%s %s / %s\nHP %.0f  ATK %.0f\nSpeed %.1f  Range %.1f\nTrait: %s" % [
 		cat.cat_name,
 		GameConstants.sex_display(cat.sex),
@@ -543,7 +543,7 @@ func _on_starter_choice_pressed(index: int) -> void:
 	_refresh_all()
 	_refresh_starter_overlay()
 	_set_sidebar_text(
-		"Starter chosen: %s\nA %s stray cat will visit soon." % [
+		"已选择：%s\n%s流浪猫即将到访。" % [
 			chosen.cat_name,
 			GameConstants.sex_display(_game_state.intro_stray_target_sex),
 		]

@@ -73,16 +73,16 @@ func resume() -> void:
 func get_time_label() -> String:
 	var fraction := time_of_day
 	if fraction < 0.125:
-		return "Dawn"
+		return "🌄 清晨"
 	elif fraction < 0.375:
-		return "Morning"
+		return "☀️ 上午"
 	elif fraction < 0.625:
-		return "Afternoon"
+		return "🌅 下午"
 	elif fraction < DAY_FRACTION:
-		return "Evening"
+		return "🌆 傍晚"
 	elif fraction < 0.875:
-		return "Night"
-	return "Late Night"
+		return "🌙 夜晚"
+	return "⭐ 深夜"
 
 func _trigger_day_production() -> void:
 	var game_state := _get_game_state()

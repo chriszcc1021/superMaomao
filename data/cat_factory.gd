@@ -4,7 +4,7 @@ extends RefCounted
 
 static func create_random_stray_cat(
 	id_prefix: String = "stray",
-	name_prefix: String = "Stray",
+	name_prefix: String = "流浪猫",
 	forced_sex: String = "",
 	forced_age_days: int = 0
 ) -> CatData:
@@ -23,7 +23,7 @@ static func create_starter_choices() -> Array[CatData]:
 	var starter_specs := [
 		{
 			"id_prefix": "starter",
-			"name": "Mochi",
+			"name": "麻糬",
 			"sex": GameConstants.SEX_FEMALE,
 			"breed": "ragdoll",
 			"profession": "support",
@@ -32,7 +32,7 @@ static func create_starter_choices() -> Array[CatData]:
 		},
 		{
 			"id_prefix": "starter",
-			"name": "Ash",
+			"name": "灰烬",
 			"sex": GameConstants.SEX_MALE,
 			"breed": "siamese",
 			"profession": "sniper",
@@ -41,7 +41,7 @@ static func create_starter_choices() -> Array[CatData]:
 		},
 		{
 			"id_prefix": "starter",
-			"name": "Ember",
+			"name": "余烬",
 			"sex": GameConstants.SEX_MALE,
 			"breed": "orange",
 			"profession": "aoe",
@@ -55,7 +55,7 @@ static func create_starter_choices() -> Array[CatData]:
 	return result
 
 static func create_intro_stray_cat(target_sex: String) -> CatData:
-	var cat := create_random_stray_cat("intro_stray", "Wanderer", target_sex, 5)
+	var cat := create_random_stray_cat("intro_stray", "流浪猫", target_sex, 5)
 	cat.gene_slot_1 = "love_spreader"
 	cat.calculate_stats()
 	return cat

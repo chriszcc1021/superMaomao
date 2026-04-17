@@ -422,7 +422,7 @@ static func breed_zh(id: String) -> String:
 static func sex_display(id: String) -> String:
 	match id:
 		SEX_MALE:
-			return "Male"
+			return "♂ 雄"
 		SEX_FEMALE:
-			return "Female"
+			return "♀ 雌"
 	return id

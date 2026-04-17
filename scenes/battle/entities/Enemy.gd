@@ -24,6 +24,9 @@ var _slow_multiplier: float = 1.0
 
 func _ready() -> void:
 	current_hp = max_hp
+	# 敌人在 layer=2，只与其他敌人碰撞（mask=2），不推动玩家猫（layer=1不在mask里）
+	collision_layer = 2
+	collision_mask = 2
 	queue_redraw()
 
 func setup(definition: Dictionary, player_target: Node2D) -> void:

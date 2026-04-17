@@ -74,6 +74,9 @@ func setup(data: CatData, enemies_root: Node2D) -> void:
 	_enemies_root = enemies_root
 	visible = true
 	z_index = 10
+	# 玩家猫在 layer=1，mask=0：不与任何物体物理碰撞，敌人无法推动
+	collision_layer = 1
+	collision_mask = 0
 	cat_data.calculate_stats()
 	base_max_hp = cat_data.base_hp
 	base_attack = cat_data.base_attack
