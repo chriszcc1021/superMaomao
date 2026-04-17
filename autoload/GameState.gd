@@ -1,5 +1,6 @@
 extends Node
 
+const CatFactory := preload("res://data/cat_factory.gd")
 
 const DEFAULT_BUILDINGS_BUILT := {
 	"cat_house": true,
@@ -9,7 +10,7 @@ const DEFAULT_BUILDINGS_BUILT := {
 	"food_farm": false,
 	"gold_mine": false,
 	"heart_cat_house": false,
-	"cemetery": false
+	"cemetery": false,
 }
 
 signal coins_changed(new_val: int)
@@ -26,16 +27,66 @@ var camp_day: int = GameConstants.STARTING_CAMP_DAY
 var cats: Array[CatData] = []
 var stray_cat_queue: Array[CatData] = []
 
+var starter_selection_pending: bool = true
+var starter_candidates: Array[CatData] = []
+var intro_stray_pending: bool = false
+var intro_stray_arrived: bool = false
+var intro_stray_timer_sec: float = 0.0
+var intro_stray_target_sex: String = ""
+
 var expedition_active: bool = false
 var expedition_cat_id: String = ""
 var expedition_layer: int = 0
 var expedition_battle_wins: int = 0
 var expedition_buffs: Array = []
 var expedition_active_genes: Array[String] = []
-var expedition_shop_cards: Array = []  # 远征商店购买的卡牌定义（Dictionary数组）
-
+var expedition_shop_cards: Array = []
 var buildings_built: Dictionary = DEFAULT_BUILDINGS_BUILT.duplicate(true)
 var cat_house_slots: int = GameConstants.STARTING_CAT_HOUSE_SLOTS
+
+func _ready() -> void:
+	randomize()
+	ensure_intro_state()
+
+func _process(delta: float) -> void:
+	if starter_selection_pending or not intro_stray_pending or intro_stray_arrived:
+		return
+	if cats.is_empty():
+		return
+	intro_stray_timer_sec = maxf(0.0, intro_stray_timer_sec - delta)
+	if intro_stray_timer_sec > 0.0:
+		return
+	var stray := CatFactory.create_intro_stray_cat(intro_stray_target_sex)
+	if not enqueue_stray_cat(stray):
+		return
+	intro_stray_pending = false
+	intro_stray_arrived = true
+	var event_bus := get_node_or_null("/root/EventBus")
+	if event_bus != null:
+		event_bus.stray_cat_arrived.emit(stray)
+
+func ensure_intro_state() -> void:
+	if not cats.is_empty():
+		starter_selection_pending = false
+		starter_candidates.clear()
+		return
+	if not starter_selection_pending:
+		return
+	if starter_candidates.is_empty():
+		starter_candidates = CatFactory.create_starter_choices()
+
+func choose_starter_cat(index: int) -> CatData:
+	ensure_intro_state()
+	if not starter_selection_pending:
+		return null
+	if index < 0 or index >= starter_candidates.size():
+		return null
+	var chosen: CatData = starter_candidates[index]
+	starter_candidates.clear()
+	starter_selection_pending = false
+	add_cat(chosen)
+	_schedule_intro_stray(chosen.sex)
+	return chosen
 
 func reset_state() -> void:
 	coins = GameConstants.STARTING_COINS
@@ -44,6 +95,12 @@ func reset_state() -> void:
 	camp_day = GameConstants.STARTING_CAMP_DAY
 	cats.clear()
 	stray_cat_queue.clear()
+	starter_selection_pending = true
+	starter_candidates.clear()
+	intro_stray_pending = false
+	intro_stray_arrived = false
+	intro_stray_timer_sec = 0.0
+	intro_stray_target_sex = ""
 	expedition_active = false
 	expedition_cat_id = ""
 	expedition_layer = 0
@@ -53,6 +110,7 @@ func reset_state() -> void:
 	expedition_shop_cards.clear()
 	buildings_built = DEFAULT_BUILDINGS_BUILT.duplicate(true)
 	cat_house_slots = GameConstants.STARTING_CAT_HOUSE_SLOTS
+	ensure_intro_state()
 	coins_changed.emit(coins)
 	cat_food_changed.emit(cat_food)
 	day_advanced.emit(camp_day)
@@ -201,3 +259,14 @@ func clear_expedition_state() -> void:
 	expedition_buffs.clear()
 	expedition_active_genes.clear()
 	expedition_shop_cards.clear()
+
+func _schedule_intro_stray(selected_sex: String) -> void:
+	intro_stray_pending = true
+	intro_stray_arrived = false
+	intro_stray_timer_sec = GameConstants.STARTER_STRAY_DELAY_SEC
+	intro_stray_target_sex = _opposite_sex(selected_sex)
+
+func _opposite_sex(value: String) -> String:
+	if value == GameConstants.SEX_MALE:
+		return GameConstants.SEX_FEMALE
+	return GameConstants.SEX_MALE

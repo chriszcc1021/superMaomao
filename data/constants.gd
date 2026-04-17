@@ -10,6 +10,11 @@ const STARTING_CAT_HOUSE_SLOTS := 5
 const MAX_CAT_HOUSE_SLOTS := 10
 const MAX_STRAY_QUEUE_SIZE := 3
 const MAX_BREED_COUNT := 3
+const STARTER_CHOICE_COUNT := 3
+const STARTER_STRAY_DELAY_SEC := 12.0
+
+const SEX_MALE := "male"
+const SEX_FEMALE := "female"
 
 const KITTEN_DAYS := 3
 const ADULT_MAX_DAYS := 30
@@ -413,3 +418,11 @@ static func profession_zh(id: String) -> String:
 
 static func breed_zh(id: String) -> String:
 	return str(BREED_DISPLAY_ZH.get(id, id))
+
+static func sex_display(id: String) -> String:
+	match id:
+		SEX_MALE:
+			return "Male"
+		SEX_FEMALE:
+			return "Female"
+	return id
