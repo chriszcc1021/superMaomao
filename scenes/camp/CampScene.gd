@@ -177,8 +177,51 @@ func _on_building_clicked(_viewport: Node, event: InputEvent, _shape_idx: int, b
 	if not (mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT):
 		return
 	if not _game_state.has_building(building_id):
+		_show_building_preview(building_id)
 		return
 	_show_building_sidebar(building_id)
+
+func _show_building_preview(building_id: String) -> void:
+	var cost := _get_effective_building_cost(int(GameConstants.BUILDING_COSTS.get(building_id, 0)))
+	var lines: PackedStringArray = []
+	match building_id:
+		"food_farm":
+			lines.append("🌱 猫粮田【未解锁】")
+			lines.append("效果：每天根据分配猫数量产出猫粮")
+			lines.append("解锁费用：%d金" % cost)
+		"gold_mine":
+			lines.append("⛏️ 金矿【未解锁】")
+			lines.append("效果：每天根据分配猫数量产出金币")
+			lines.append("解锁费用：%d金" % cost)
+		"nursery":
+			lines.append("🍼 产房【未解锁】")
+			lines.append("效果：繁育成功率从%d%%提升至%d%%" % [
+				int(GameConstants.BREED_SUCCESS_WITHOUT_NURSERY * 100),
+				int(GameConstants.BREED_SUCCESS_WITH_NURSERY * 100)])
+			lines.append("解锁费用：%d金" % cost)
+		"hospital":
+			lines.append("🏥 医院【未解锁】")
+			lines.append("效果：每天治愈在此工作的病猫")
+			lines.append("解锁费用：%d金" % cost)
+		"heart_cat_house":
+			lines.append("❤️ 爱心猫窝【未解锁】")
+			lines.append("效果：流浪猫来访概率 +20%")
+			lines.append("解锁费用：%d金" % cost)
+		"cemetery":
+			lines.append("🪦 墓地【未解锁】")
+			lines.append("效果：记录死亡猫咪")
+			lines.append("解锁费用：%d金" % cost)
+		"fortune_cat":
+			lines.append("🪙 招财猫神龛【未解锁】")
+			lines.append("效果：分配猫每天产出金币")
+			lines.append("解锁费用：%d金" % cost)
+		_:
+			lines.append("%s【未解锁】" % _building_display_name(building_id))
+			lines.append("解锁费用：%d金" % cost)
+	if cost > 0:
+		lines.append("")
+		lines.append("💡 目前金币：%d" % _game_state.coins)
+	_set_sidebar_text("\n".join(lines))
 
 func _refresh_cat_nodes() -> void:
 	for child: Node in _cats_root.get_children():

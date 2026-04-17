@@ -116,7 +116,7 @@ const PROFESSION_BASE := {
 	"sniper": {
 		"attack": 70.0,
 		"defense": 18.0,
-		"speed": 72.0,
+		"speed": 115.0,
 		"attack_speed": 0.8,
 		"range": 6.0,
 		"hp": 120.0
@@ -124,7 +124,7 @@ const PROFESSION_BASE := {
 	"aoe": {
 		"attack": 40.0,
 		"defense": 22.0,
-		"speed": 60.0,
+		"speed": 105.0,
 		"attack_speed": 1.2,
 		"range": 4.0,
 		"hp": 150.0
@@ -132,7 +132,7 @@ const PROFESSION_BASE := {
 	"control": {
 		"attack": 25.0,
 		"defense": 16.0,
-		"speed": 68.0,
+		"speed": 110.0,
 		"attack_speed": 1.0,
 		"range": 5.0,
 		"hp": 100.0
@@ -140,7 +140,7 @@ const PROFESSION_BASE := {
 	"support": {
 		"attack": 20.0,
 		"defense": 20.0,
-		"speed": 65.0,
+		"speed": 108.0,
 		"attack_speed": 1.0,
 		"range": 4.0,
 		"hp": 130.0
