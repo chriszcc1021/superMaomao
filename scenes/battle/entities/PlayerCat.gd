@@ -72,6 +72,8 @@ func _ready() -> void:
 func setup(data: CatData, enemies_root: Node2D) -> void:
 	cat_data = data
 	_enemies_root = enemies_root
+	visible = true
+	z_index = 10
 	cat_data.calculate_stats()
 	base_max_hp = cat_data.base_hp
 	base_attack = cat_data.base_attack
@@ -215,7 +217,7 @@ func apply_buff(effect_key: String, value: float) -> void:
 	if not _buff_bonus.has(effect_key):
 		return
 	_buff_bonus[effect_key] = float(_buff_bonus[effect_key]) + value
-	var hp_ratio := current_hp / max(max_hp, 1.0) if max_hp > 0.0 else 1.0
+	var hp_ratio: float = current_hp / maxf(max_hp, 1.0) if max_hp > 0.0 else 1.0
 	_recalculate_runtime_stats()
 	current_hp = max_hp * hp_ratio
 	hp_changed.emit(current_hp, max_hp)
@@ -240,7 +242,7 @@ func _recalculate_runtime_stats() -> void:
 	pickup_magnet_radius = BASE_PICKUP_MAGNET_RADIUS + float(_buff_bonus["pickup_radius"])
 
 func _recalculate_dynamic_gene_effects() -> void:
-	var hp_ratio := current_hp / max(max_hp, 1.0)
+	var hp_ratio: float = current_hp / maxf(max_hp, 1.0)
 	_dyn_move_bonus = 0.0
 	_dyn_aspd_bonus = 0.0
 	_dyn_attack_bonus = 0.0
@@ -253,8 +255,8 @@ func _recalculate_dynamic_gene_effects() -> void:
 		_dyn_move_bonus += 0.25
 	# desperado：每损失10%HP攻击+3%（最多+24%）
 	if "desperado" in active_genes:
-		var hp_lost := 1.0 - hp_ratio
-		var stacks := min(int(hp_lost / 0.10), 8)
+		var hp_lost: float = 1.0 - hp_ratio
+		var stacks: int = mini(int(hp_lost / 0.10), 8)
 		_dyn_attack_bonus += stacks * 0.03
 	# 通知 WeaponSystem 更新动态攻速/攻击加成
 	if _weapon_system != null and _weapon_system.has_method("set_dynamic_bonuses"):
@@ -268,7 +270,7 @@ func _direction_to_nearest_enemy() -> Vector2:
 	for child: Node in _enemies_root.get_children():
 		if not (child is Node2D):
 			continue
-		var dist := global_position.distance_squared_to((child as Node2D).global_position)
+		var dist: float = global_position.distance_squared_to((child as Node2D).global_position)
 		if dist < nearest_dist:
 			nearest_dist = dist
 			nearest = child

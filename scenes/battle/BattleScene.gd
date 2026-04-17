@@ -14,6 +14,7 @@ const FishItem := preload("res://scenes/battle/entities/FishItem.gd")
 
 var _node_type: String = "battle_normal"
 var _selected_cat: CatData = null
+var _selected_cat_source: CatData = null
 var _battle_over: bool = false
 var _battle_paused: bool = false
 var _battle_time_left: float = GameConstants.BATTLE_NORMAL_DURATION
@@ -38,7 +39,8 @@ var _pending_first_level_up: bool = false
 func _ready() -> void:
 	randomize()
 	_node_type = _get_scene_manager().last_battle_node_type if _get_scene_manager() != null else "battle_normal"
-	_selected_cat = _resolve_selected_cat()
+	_selected_cat_source = _resolve_selected_cat()
+	_selected_cat = _create_battle_cat_copy(_selected_cat_source)
 	_setup_player()
 	_setup_spawn()
 	_setup_card_select()
@@ -147,6 +149,37 @@ func _resolve_selected_cat() -> CatData:
 	if not game_state.cats.is_empty():
 		return game_state.cats[0]
 	return CatData.new()
+
+func _create_battle_cat_copy(source: CatData) -> CatData:
+	if source == null:
+		return CatData.new()
+	var copy := CatData.new()
+	copy.id = source.id
+	copy.cat_name = source.cat_name
+	copy.sex = source.sex
+	copy.breed = source.breed
+	copy.profession = source.profession
+	copy.status = GameConstants.LIFECYCLE_STATUS_IDLE
+	copy.health = source.health
+	copy.age_days = source.age_days
+	copy.has_expeditioned = source.has_expeditioned
+	copy.breed_count = source.breed_count
+	copy.assigned_building = source.assigned_building
+	copy.level = source.level
+	copy.xp = source.xp
+	copy.gene_head = source.gene_head
+	copy.gene_ear = source.gene_ear
+	copy.gene_eye_color = source.gene_eye_color
+	copy.gene_eye_shape = source.gene_eye_shape
+	copy.gene_fur_main = source.gene_fur_main
+	copy.gene_fur_accent = source.gene_fur_accent
+	copy.gene_pattern = source.gene_pattern
+	copy.gene_tail = source.gene_tail
+	copy.gene_slot_1 = source.gene_slot_1
+	copy.gene_slot_2 = source.gene_slot_2
+	copy.gene_slot_3 = source.gene_slot_3
+	copy.calculate_stats()
+	return copy
 
 func _on_enemy_defeated(enemy_type: String, fish_drop: int, pos: Vector2) -> void:
 	# 生成小鱼干掉落物
@@ -539,9 +572,9 @@ func _finish_battle(victory: bool) -> void:
 	_spawn_manager.set_battle_paused(true)
 
 	# 将本场战斗的等级和XP写回猫的持久数据
-	if _selected_cat != null:
-		_selected_cat.level = _level
-		_selected_cat.xp = _fish
+	if _selected_cat_source != null:
+		_selected_cat_source.level = _level
+		_selected_cat_source.xp = _fish
 
 	var event_bus := _get_event_bus()
 	if event_bus != null:

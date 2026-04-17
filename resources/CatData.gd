@@ -4,6 +4,7 @@ extends Resource
 
 @export var id: String = ""
 @export var cat_name: String = ""
+@export var sex: String = GameConstants.SEX_FEMALE
 @export var breed: String = "tabby"
 @export var profession: String = "sniper"
 
