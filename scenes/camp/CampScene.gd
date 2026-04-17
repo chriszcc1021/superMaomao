@@ -2,6 +2,7 @@ extends Node2D
 
 const CatSpriteScene := preload("res://scenes/common/CatSprite.tscn")
 const DayManagerScript := preload("res://scenes/camp/DayManager.gd")
+const StarterCatPreviewScript := preload("res://scenes/camp/ui/StarterCatPreview.gd")
 
 const BUILDING_SCENES := {
 	"cat_house": preload("res://scenes/camp/buildings/CatHouse.tscn"),
@@ -61,6 +62,8 @@ var _day_manager: RefCounted = DayManagerScript.new()
 var _starter_overlay: Control = null
 var _starter_hint_label: Label = null
 var _starter_choice_buttons: Array[Button] = []
+var _starter_previews: Array[Control] = []
+var _starter_info_labels: Array[Label] = []
 var _starter_overlay_paused_time: bool = false
 
 # 升级按钮容器（动态创建）
@@ -588,57 +591,98 @@ func _build_starter_overlay() -> void:
 	if _starter_overlay != null:
 		return
 
+	# ── 全屏半透明遮罩 ──
 	var overlay := ColorRect.new()
 	overlay.name = "StarterOverlay"
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	overlay.color = Color(0.05, 0.07, 0.10, 0.86)
+	overlay.color = Color(0.04, 0.06, 0.10, 0.90)
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 
+	# ── 中央主面板 ──
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(1040.0, 420.0)
+	panel.custom_minimum_size = Vector2(980.0, 500.0)
 	panel.anchor_left = 0.5
 	panel.anchor_top = 0.5
 	panel.anchor_right = 0.5
 	panel.anchor_bottom = 0.5
-	panel.offset_left = -520.0
-	panel.offset_top = -210.0
-	panel.offset_right = 520.0
-	panel.offset_bottom = 210.0
+	panel.offset_left = -490.0
+	panel.offset_top = -250.0
+	panel.offset_right = 490.0
+	panel.offset_bottom = 250.0
 	overlay.add_child(panel)
 
 	var root := VBoxContainer.new()
 	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_theme_constant_override("separation", 14)
+	root.add_theme_constant_override("separation", 16)
 	panel.add_child(root)
 
+	# ── 标题 ──
 	var title := Label.new()
-	title.text = "选择你的第一只猫"
+	title.text = "✦ 选择你的第一只猫 ✦"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 22)
 	root.add_child(title)
 
+	# ── 副标题 ──
 	var hint := Label.new()
 	hint.text = "从三只候选猫中选一只。选完后，一只异性流浪猫将很快到访营地。"
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_color_override("font_color", Color(0.78, 0.78, 0.78))
 	root.add_child(hint)
 	_starter_hint_label = hint
 
+	# ── 三张卡片横排 ──
 	var choices := HBoxContainer.new()
 	choices.alignment = BoxContainer.ALIGNMENT_CENTER
-	choices.add_theme_constant_override("separation", 18)
+	choices.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	choices.add_theme_constant_override("separation", 20)
 	root.add_child(choices)
 
 	for index in GameConstants.STARTER_CHOICE_COUNT:
-		var button := Button.new()
-		button.custom_minimum_size = Vector2(300.0, 250.0)
-		button.clip_text = false
-		button.pressed.connect(_on_starter_choice_pressed.bind(index))
-		choices.add_child(button)
-		_starter_choice_buttons.append(button)
+		var card := _build_starter_card(index)
+		choices.add_child(card)
 
 	_ui_layer.add_child(overlay)
 	_starter_overlay = overlay
+
+func _build_starter_card(index: int) -> PanelContainer:
+	# ── 卡片外框 ──
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(280.0, 390.0)
+	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	var inner := VBoxContainer.new()
+	inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inner.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	inner.add_theme_constant_override("separation", 8)
+	card.add_child(inner)
+
+	# ── 猫咪外观预览（占据约一半高度） ──
+	var preview: Control = StarterCatPreviewScript.new()
+	preview.custom_minimum_size = Vector2(280.0, 170.0)
+	preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	inner.add_child(preview)
+	_starter_previews.append(preview)
+
+	# ── 猫咪信息标签 ──
+	var info := Label.new()
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	@warning_ignore("int_as_enum_without_cast")
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.add_theme_font_size_override("font_size", 13)
+	inner.add_child(info)
+	_starter_info_labels.append(info)
+
+	# ── 选择按钮 ──
+	var btn := Button.new()
+	btn.text = "选择此猫"
+	btn.custom_minimum_size = Vector2(0.0, 40.0)
+	btn.pressed.connect(_on_starter_choice_pressed.bind(index))
+	inner.add_child(btn)
+	_starter_choice_buttons.append(btn)
+
+	return card
 
 func _refresh_starter_overlay() -> void:
 	if _starter_overlay == null or _game_state == null:
@@ -657,31 +701,32 @@ func _refresh_starter_overlay() -> void:
 
 	var candidates: Array = _game_state.starter_candidates
 	for index in _starter_choice_buttons.size():
-		var button := _starter_choice_buttons[index]
-		if index >= candidates.size():
-			button.disabled = true
-			button.text = "Unavailable"
-			continue
-		var cat: CatData = candidates[index]
-		button.disabled = false
-		button.text = _starter_button_text(cat)
+		var btn := _starter_choice_buttons[index]
+		var has_cat: bool = index < candidates.size()
+		btn.disabled = not has_cat
+		# 更新预览和信息标签
+		if index < _starter_previews.size():
+			var preview: Control = _starter_previews[index]
+			if preview.has_method("setup"):
+				preview.call("setup", candidates[index] if has_cat else null)
+		if index < _starter_info_labels.size():
+			var lbl: Label = _starter_info_labels[index]
+			lbl.text = _starter_card_info_text(candidates[index]) if has_cat else ""
 
-func _starter_button_text(cat: CatData) -> String:
-	var traits: PackedStringArray = []
+func _starter_card_info_text(cat: CatData) -> String:
+	var gene_names: PackedStringArray = []
 	for gene_id: String in cat.get_special_genes():
-		traits.append(gene_id)
-	var trait_text := ", ".join(traits) if not traits.is_empty() else "无"
-	return "%s\n%s %s / %s\nHP %.0f  ATK %.0f\nSpeed %.1f  Range %.1f\nTrait: %s" % [
-		cat.cat_name,
-		GameConstants.sex_display(cat.sex),
-		GameConstants.profession_zh(cat.profession),
-		GameConstants.breed_zh(cat.breed),
-		cat.base_hp,
-		cat.base_attack,
-		cat.base_attack_speed,
-		cat.base_range,
-		trait_text,
-	]
+		var gene_info: Dictionary = GameConstants.GENE_DISPLAY_ZH.get(gene_id, {})
+		var gene_name: String = str(gene_info.get("name", gene_id))
+		gene_names.append(gene_name)
+	var trait_text := "、".join(gene_names) if not gene_names.is_empty() else "无"
+	return (
+		"%s\n" % cat.cat_name
+		+ "%s  %s  %s\n" % [GameConstants.sex_display(cat.sex), GameConstants.profession_zh(cat.profession), GameConstants.breed_zh(cat.breed)]
+		+ "HP %.0f  攻击 %.0f\n" % [cat.base_hp, cat.base_attack]
+		+ "射程 %.1f  攻速 %.2f/s\n" % [cat.base_range, cat.base_attack_speed]
+		+ "特性：%s" % trait_text
+	)
 
 func _on_starter_choice_pressed(index: int) -> void:
 	var chosen: CatData = _game_state.choose_starter_cat(index)
