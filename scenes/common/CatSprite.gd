@@ -29,12 +29,12 @@ func _ready() -> void:
 
 func setup(data: CatData) -> void:
 	cat_data = data
-	# 营地漫步速度固定为 45-65，与战斗速度分开，避免战斗提速影响营地动画
-	var wander_speed := clampf(cat_data.base_move_speed * 0.45, 35.0, 65.0)
+	# 营地漫步速度固定为 25-45，与战斗速度分开，方便用户拎猫
+	var wander_speed := clampf(cat_data.base_move_speed * 0.3, 25.0, 45.0)
 	_move_speed = maxf(GameConstants.CAT_WANDER_MIN_MOVE_SPEED, wander_speed)
 	if cat_data.base_move_speed <= 0.0:
 		cat_data.calculate_stats()
-		var ws := clampf(cat_data.base_move_speed * 0.45, 35.0, 65.0)
+		var ws := clampf(cat_data.base_move_speed * 0.3, 25.0, 45.0)
 		_move_speed = maxf(GameConstants.CAT_WANDER_MIN_MOVE_SPEED, ws)
 	_update_anim_state()
 	queue_redraw()
