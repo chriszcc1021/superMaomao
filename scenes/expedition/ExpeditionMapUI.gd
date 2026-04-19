@@ -27,6 +27,11 @@ func _refresh_cat_options() -> void:
 		return
 	var idx := 0
 	for cat: CatData in game_state.get_living_cats():
+		# 过滤：不可出征的状态
+		if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
+			continue
+		if cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
+			continue
 		var label := "%s，%s/%s" % [cat.cat_name, GameConstants.profession_zh(cat.profession), GameConstants.breed_zh(cat.breed)]
 		_cat_option.add_item(label, idx)
 		idx += 1
@@ -162,11 +167,18 @@ func _selected_cat() -> CatData:
 	var game_state := _get_game_state()
 	if game_state == null:
 		return null
-	var living: Array[CatData] = game_state.get_living_cats()
-	if living.is_empty():
+	# 与 _refresh_cat_options 保持一致的过滤条件
+	var eligible: Array[CatData] = []
+	for cat: CatData in game_state.get_living_cats():
+		if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
+			continue
+		if cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
+			continue
+		eligible.append(cat)
+	if eligible.is_empty():
 		return null
-	var index := clampi(_cat_option.selected, 0, living.size() - 1)
-	return living[index]
+	var index := clampi(_cat_option.selected, 0, eligible.size() - 1)
+	return eligible[index]
 
 func _node_label(node_type: String) -> String:
 	match node_type:

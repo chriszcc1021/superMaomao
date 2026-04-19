@@ -373,11 +373,18 @@ func start_breeding_in_slot(slot_idx: int, father_id: String, mother_id: String,
 		return false
 	if not has_free_cat_house_slot():
 		return false
-	# 成功率检定
-	var chance := GameConstants.BREED_SUCCESS_WITH_NURSERY if has_building("nursery") else GameConstants.BREED_SUCCESS_WITHOUT_NURSERY
+	# 验证父母
+	if father_id == mother_id:
+		return false
 	var father := find_cat(father_id)
 	var mother := find_cat(mother_id)
-	if father != null and (father.has_gene("love_spreader") or (mother != null and mother.has_gene("love_spreader"))):
+	if father == null or mother == null:
+		return false
+	if father.sex != GameConstants.SEX_MALE or mother.sex != GameConstants.SEX_FEMALE:
+		return false
+	# 成功率检定
+	var chance := GameConstants.BREED_SUCCESS_WITH_NURSERY if has_building("nursery") else GameConstants.BREED_SUCCESS_WITHOUT_NURSERY
+	if father.has_gene("love_spreader") or mother.has_gene("love_spreader"):
 		chance = minf(1.0, chance + 0.15)
 	if randf() > chance:
 		return false  # 本次繁育失败，坑位不占用
@@ -387,10 +394,8 @@ func start_breeding_in_slot(slot_idx: int, father_id: String, mother_id: String,
 	slot["child_breed"] = child_breed
 	slot["child_profession"] = child_profession
 	slot["days_remaining"] = GameConstants.BREEDING_SLOT_CD_DAYS
-	if father != null:
-		father.breed_count += 1
-	if mother != null:
-		mother.breed_count += 1
+	father.breed_count += 1
+	mother.breed_count += 1
 	return true
 
 ## DayManager 每天调用，推进所有坑位倒计时，返回本天出生的猫列表

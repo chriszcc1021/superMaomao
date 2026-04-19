@@ -141,12 +141,10 @@ func _on_buy_pressed(idx: int, price: int, card_def: Dictionary) -> void:
 	var game_state := _get_game_state()
 	if game_state == null:
 		return
-	if game_state.coins < price:
+	if not game_state.spend_coins(price):  # spend_coins 正确扣钱并检查余额
 		return
-	game_state.add_coins(-price)
 	game_state.expedition_shop_cards.append(card_def)
 	_purchased = true
-	# 刷新金币显示并禁用所有购买按钮
 	_update_after_purchase()
 
 func _update_after_purchase() -> void:

@@ -16,7 +16,8 @@ extends PanelContainer
 
 var _game_state: Node = null
 var _breeding_system := BreedingSystem.new()
-var _available_cats: Array[CatData] = []
+var _available_cats: Array[CatData] = []  # males first, then females
+var _male_count: int = 0
 var _active_slot_idx: int = -1  # 当前正在配置哪个坑位
 
 func _ready() -> void:
@@ -120,14 +121,25 @@ func _bind_static_options() -> void:
 func _refresh_parent_options() -> void:
 	_father_option.clear()
 	_mother_option.clear()
-	for i in _available_cats.size():
-		var cat: CatData = _available_cats[i]
+	var males: Array[CatData] = []
+	var females: Array[CatData] = []
+	for cat: CatData in _available_cats:
+		if cat.sex == GameConstants.SEX_MALE:
+			males.append(cat)
+		else:
+			females.append(cat)
+	for cat in males:
 		var label := "%s [%s/%s]" % [cat.cat_name, GameConstants.profession_zh(cat.profession), GameConstants.breed_zh(cat.breed)]
-		_father_option.add_item(label, i)
-		_mother_option.add_item(label, i)
-	_confirm_button.disabled = _available_cats.size() < 2
-	if _available_cats.size() < 2:
-		_prediction_label.text = "需要至少两只成年猫才能繁育。"
+		_father_option.add_item(label, males.find(cat))
+	for cat in females:
+		var label := "%s [%s/%s]" % [cat.cat_name, GameConstants.profession_zh(cat.profession), GameConstants.breed_zh(cat.breed)]
+		_mother_option.add_item(label, females.find(cat))
+	# 缓存，_selected_parent 用
+	_available_cats = males + females
+	_male_count = males.size()
+	_confirm_button.disabled = males.is_empty() or females.is_empty()
+	if males.is_empty() or females.is_empty():
+		_prediction_label.text = "需要至少一只公猫和一只母猫。"
 		return
 	_update_prediction()
 
@@ -217,10 +229,16 @@ func _collect_breedable_cats() -> Array[CatData]:
 	return result
 
 func _selected_parent(option: OptionButton) -> CatData:
-	if _available_cats.is_empty() or option.selected < 0:
+	if option.selected < 0:
 		return null
-	var idx := clampi(option.selected, 0, _available_cats.size() - 1)
-	return _available_cats[idx]
+	# 父本取 males 区间，母本取 females 区间
+	var is_father := (option == _father_option)
+	if is_father:
+		var idx := clampi(option.selected, 0, _male_count - 1)
+		return _available_cats[idx] if idx < _available_cats.size() else null
+	else:
+		var idx := _male_count + clampi(option.selected, 0, _available_cats.size() - _male_count - 1)
+		return _available_cats[idx] if idx < _available_cats.size() else null
 
 func _selected_child_breed() -> String:
 	return "" if _breed_option.selected < 0 else str(_breed_option.get_item_metadata(_breed_option.selected))
