@@ -1,0 +1,10 @@
+{
+  "boss_gorilla_king": {
+    "display_name": "猩猩大王",
+    "hp": 2000.0,
+    "damage": 30.0,
+    "move_speed": 60.0,
+    "fish_drop": 50,
+    "show_hp_bar": true
+  }
+}

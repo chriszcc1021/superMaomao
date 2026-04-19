@@ -1,0 +1,10 @@
+{
+  "elite_monkey": {
+    "display_name": "精英猴",
+    "hp": 300.0,
+    "damage": 20.0,
+    "move_speed": 70.0,
+    "fish_drop": 20,
+    "show_hp_bar": true
+  }
+}

@@ -11,6 +11,14 @@ func advance_day(game_state: Node, event_bus: Node) -> void:
 	_check_lifecycle(game_state)
 	_produce_resources(game_state)
 	_roll_stray_cat(game_state, event_bus)
+	_tick_breeding_slots(game_state, event_bus)
+
+func _tick_breeding_slots(game_state: Node, event_bus: Node) -> void:
+	var born: Array[CatData] = game_state.tick_breeding_slots()
+	if born.is_empty() or event_bus == null:
+		return
+	for child: CatData in born:
+		event_bus.breeding_success.emit(child)
 
 func _consume_cat_food(game_state: Node) -> void:
 	var total_cost: int = 0

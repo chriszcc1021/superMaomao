@@ -1,5 +1,6 @@
 extends Node
 
+const BreedingSystem := preload("res://scenes/camp/BreedingSystem.gd")
 
 const DEFAULT_BUILDINGS_BUILT := {
 	"cat_house": true,
@@ -43,8 +44,14 @@ var expedition_shop_cards: Array = []
 var buildings_built: Dictionary = DEFAULT_BUILDINGS_BUILT.duplicate(true)
 var cat_house_slots: int = GameConstants.STARTING_CAT_HOUSE_SLOTS
 
+# ─── 产房坑位 ─────────────────────────────────────────────────────────────────
+# 每个坑位结构: { "active": bool, "father_id": String, "mother_id": String, "days_remaining": int }
+var max_breeding_slots: int = GameConstants.BREEDING_SLOT_INITIAL
+var breeding_slots: Array[Dictionary] = []
+
 func _ready() -> void:
 	randomize()
+	_init_breeding_slots()
 	ensure_intro_state()
 
 func _process(delta: float) -> void:
@@ -109,6 +116,9 @@ func reset_state() -> void:
 	expedition_shop_cards.clear()
 	buildings_built = DEFAULT_BUILDINGS_BUILT.duplicate(true)
 	cat_house_slots = GameConstants.STARTING_CAT_HOUSE_SLOTS
+	max_breeding_slots = GameConstants.BREEDING_SLOT_INITIAL
+	breeding_slots.clear()
+	_init_breeding_slots()
 	ensure_intro_state()
 	coins_changed.emit(coins)
 	cat_food_changed.emit(cat_food)
@@ -281,6 +291,8 @@ func upgrade_building(building_id: String) -> bool:
 			return _upgrade_granary()
 		"fortune_cat":
 			return _upgrade_fortune_cat()
+		"nursery":
+			return _upgrade_nursery()
 	return false
 
 func _upgrade_cat_house() -> bool:
@@ -325,3 +337,91 @@ func _upgrade_fortune_cat() -> bool:
 	buildings_built["fortune_cat"] = current_level + 1
 	coins_changed.emit(coins)
 	return true
+
+func _upgrade_nursery() -> bool:
+	if max_breeding_slots >= GameConstants.BREEDING_SLOT_MAX:
+		return false
+	var cost_idx: int = max_breeding_slots - 1  # 0-based: 0=解锁第2坑, 1=解锁第3坑
+	if cost_idx < 0 or cost_idx >= GameConstants.BREEDING_SLOT_UPGRADE_COSTS.size():
+		return false
+	var cost: int = int(GameConstants.BREEDING_SLOT_UPGRADE_COSTS[cost_idx])
+	if coins < cost:
+		return false
+	coins -= cost
+	max_breeding_slots += 1
+	_init_breeding_slots()
+	coins_changed.emit(coins)
+	return true
+
+# ─── 产房坑位 API ─────────────────────────────────────────────────────────────
+
+func _init_breeding_slots() -> void:
+	while breeding_slots.size() < max_breeding_slots:
+		breeding_slots.append({"active": false, "father_id": "", "mother_id": "", "days_remaining": 0})
+
+func get_breeding_slot(index: int) -> Dictionary:
+	if index < 0 or index >= breeding_slots.size():
+		return {}
+	return breeding_slots[index]
+
+## 启动一个坑位的繁育。成功返回 true，失败返回 false。
+func start_breeding_in_slot(slot_idx: int, father_id: String, mother_id: String) -> bool:
+	if slot_idx < 0 or slot_idx >= breeding_slots.size():
+		return false
+	var slot: Dictionary = breeding_slots[slot_idx]
+	if slot.get("active", false):
+		return false
+	if not has_free_cat_house_slot():
+		return false
+	# 成功率检定
+	var chance := GameConstants.BREED_SUCCESS_WITH_NURSERY if has_building("nursery") else GameConstants.BREED_SUCCESS_WITHOUT_NURSERY
+	var father := _find_cat(father_id)
+	var mother := _find_cat(mother_id)
+	if father != null and (father.has_gene("love_spreader") or (mother != null and mother.has_gene("love_spreader"))):
+		chance = minf(1.0, chance + 0.15)
+	if randf() > chance:
+		return false  # 本次繁育失败，坑位不占用
+	slot["active"] = true
+	slot["father_id"] = father_id
+	slot["mother_id"] = mother_id
+	slot["days_remaining"] = GameConstants.BREEDING_SLOT_CD_DAYS
+	if father != null:
+		father.breed_count += 1
+	if mother != null:
+		mother.breed_count += 1
+	return true
+
+## DayManager 每天调用，推进所有坑位倒计时，返回本天出生的猫列表
+func tick_breeding_slots() -> Array[CatData]:
+	var born: Array[CatData] = []
+	for i in breeding_slots.size():
+		var slot: Dictionary = breeding_slots[i]
+		if not slot.get("active", false):
+			continue
+		slot["days_remaining"] = int(slot["days_remaining"]) - 1
+		if slot["days_remaining"] > 0:
+			continue
+		# 出生
+		var father := _find_cat(str(slot.get("father_id", "")))
+		var mother := _find_cat(str(slot.get("mother_id", "")))
+		if father != null and mother != null:
+			var breeding_sys := BreedingSystem.new()
+			var child_breed := father.breed
+			var child_profession := father.profession
+			var child := breeding_sys.breed(father, mother, child_breed, child_profession)
+			if child != null and add_cat(child):
+				born.append(child)
+		# 清空坑位
+		slot["active"] = false
+		slot["father_id"] = ""
+		slot["mother_id"] = ""
+		slot["days_remaining"] = 0
+	return born
+
+func _find_cat(cat_id: String) -> CatData:
+	if cat_id.is_empty():
+		return null
+	for cat: CatData in cats:
+		if cat != null and cat.id == cat_id:
+			return cat
+	return null

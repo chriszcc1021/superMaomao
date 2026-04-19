@@ -1,0 +1,34 @@
+{
+  "small_monkey": {
+    "display_name": "小猴兵",
+    "hp": 30.0,
+    "damage": 8.0,
+    "move_speed": 95.0,
+    "fish_drop": 1,
+    "show_hp_bar": false
+  },
+  "stone_monkey": {
+    "display_name": "投石猴",
+    "hp": 25.0,
+    "damage": 12.0,
+    "move_speed": 85.0,
+    "fish_drop": 2,
+    "show_hp_bar": false
+  },
+  "tank_gorilla": {
+    "display_name": "坦克猩猩",
+    "hp": 120.0,
+    "damage": 15.0,
+    "move_speed": 50.0,
+    "fish_drop": 5,
+    "show_hp_bar": false
+  },
+  "monkey_swarm": {
+    "display_name": "猴群",
+    "hp": 15.0,
+    "damage": 5.0,
+    "move_speed": 110.0,
+    "fish_drop": 1,
+    "show_hp_bar": false
+  }
+}

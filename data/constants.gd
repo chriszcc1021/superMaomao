@@ -25,6 +25,13 @@ const HEART_CAT_HOUSE_STRAY_CHANCE_BONUS := 0.20
 const BREED_SUCCESS_WITH_NURSERY := 0.65
 const BREED_SUCCESS_WITHOUT_NURSERY := 0.15
 
+# ─── 产房坑位 ─────────────────────────────────────────────────────────────────
+const BREEDING_SLOT_INITIAL := 1          # 初始坑位数
+const BREEDING_SLOT_MAX := 3              # 最多坑位数
+const BREEDING_SLOT_CD_DAYS := 3          # 繁育所需天数（与幼崽期对齐）
+# 升级费用：index 0 = 解锁第2坑，index 1 = 解锁第3坑
+const BREEDING_SLOT_UPGRADE_COSTS: Array = [100, 200]
+
 const FOOD_CONSUMPTION_KITTEN := 1
 const FOOD_CONSUMPTION_ADULT := 3
 const FOOD_CONSUMPTION_ELDER := 3
