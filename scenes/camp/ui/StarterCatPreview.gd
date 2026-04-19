@@ -2,6 +2,9 @@ class_name StarterCatPreview
 extends Control
 ## 首选猫卡片中的猫咪外观预览（Control版，无需SubViewport）
 
+const CatData       := preload("res://resources/CatData.gd")
+const GameConstants := preload("res://data/constants.gd")
+
 var cat_data: CatData = null
 
 func setup(data: CatData) -> void:

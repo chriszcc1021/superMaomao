@@ -1,5 +1,7 @@
 extends Node
 
+const CatData := preload("res://resources/CatData.gd")
+const CardData := preload("res://resources/CardData.gd")
 
 signal building_built(building_id: String)
 signal stray_cat_arrived(cat: CatData)

@@ -1,6 +1,7 @@
 extends PanelContainer
 
-# BreedingSystem 已有 class_name，全局可用，无需 preload
+const BreedingSystem := preload("res://scenes/camp/BreedingSystem.gd")
+const GameConstants := preload("res://data/constants.gd")
 
 @onready var _slots_container: HBoxContainer = $VBox/SlotsContainer
 @onready var _form_panel: PanelContainer = $VBox/FormPanel
@@ -16,7 +17,7 @@ extends PanelContainer
 
 var _game_state: Node = null
 var _breeding_system := BreedingSystem.new()
-var _available_cats: Array[CatData] = []  # males first, then females
+var _available_cats: Array = []  # males first, then females (untyped for compatibility)
 var _male_count: int = 0
 var _active_slot_idx: int = -1  # 当前正在配置哪个坑位
 
@@ -72,10 +73,10 @@ func _make_slot_card(idx: int, slot: Dictionary) -> PanelContainer:
 	vbox.add_child(title)
 
 	if slot.get("active", false):
-		var father := _game_state.find_cat(str(slot.get("father_id", "")))
-		var mother := _game_state.find_cat(str(slot.get("mother_id", "")))
-		var father_name := father.cat_name if father != null else "未知"
-		var mother_name := mother.cat_name if mother != null else "未知"
+		var father = _game_state.find_cat(str(slot.get("father_id", "")))
+		var mother = _game_state.find_cat(str(slot.get("mother_id", "")))
+		var father_name: String = str(father.cat_name) if father != null else "未知"
+		var mother_name: String = str(mother.cat_name) if mother != null else "未知"
 
 		var info := Label.new()
 		info.text = "♂ %s\n♀ %s" % [father_name, mother_name]
@@ -121,9 +122,9 @@ func _bind_static_options() -> void:
 func _refresh_parent_options() -> void:
 	_father_option.clear()
 	_mother_option.clear()
-	var males: Array[CatData] = []
-	var females: Array[CatData] = []
-	for cat: CatData in _available_cats:
+	var males: Array = []
+	var females: Array = []
+	for cat in _available_cats:
 		if cat.sex == GameConstants.SEX_MALE:
 			males.append(cat)
 		else:
@@ -147,15 +148,15 @@ func _on_selection_changed(_index: int) -> void:
 	_update_prediction()
 
 func _update_prediction() -> void:
-	var father := _selected_parent(_father_option)
-	var mother := _selected_parent(_mother_option)
+	var father = _selected_parent(_father_option)
+	var mother = _selected_parent(_mother_option)
 	if father == null or mother == null:
 		_prediction_label.text = "请选择父本与母本。"
 		return
 	if father == mother:
 		_prediction_label.text = "父本与母本不能是同一只猫。"
 		return
-	var predicted := _breeding_system.predict_range(father, mother, _selected_child_breed(), _selected_child_profession(), 100)
+	var predicted = _breeding_system.predict_range(father, mother, _selected_child_breed(), _selected_child_profession(), 100)
 	_prediction_label.text = "预测子代属性范围：\n生命：%.0f - %.0f　攻击：%.0f - %.0f\n攻速：%.2f - %.2f　射程：%.1f - %.1f\n暴击：%.0f%% - %.0f%%" % [
 		predicted.hp_min, predicted.hp_max,
 		predicted.atk_min, predicted.atk_max,
@@ -167,8 +168,8 @@ func _update_prediction() -> void:
 func _on_confirm_pressed() -> void:
 	if _active_slot_idx < 0:
 		return
-	var father := _selected_parent(_father_option)
-	var mother := _selected_parent(_mother_option)
+	var father = _selected_parent(_father_option)
+	var mother = _selected_parent(_mother_option)
 	if father == null or mother == null:
 		_status_label.text = "请选择父本与母本。"
 		return
@@ -193,13 +194,13 @@ func _on_confirm_pressed() -> void:
 func _refresh_upgrade_button() -> void:
 	if _game_state == null:
 		return
-	var slots := _game_state.max_breeding_slots
-	var max_s := GameConstants.BREEDING_SLOT_MAX
+	var slots: int = _game_state.max_breeding_slots
+	var max_s: int = GameConstants.BREEDING_SLOT_MAX
 	if slots >= max_s:
 		_upgrade_button.text = "坑位已满"
 		_upgrade_button.disabled = true
 		return
-	var cost_idx := slots - 1
+	var cost_idx: int = slots - 1
 	var cost: int = int(GameConstants.BREEDING_SLOT_UPGRADE_COSTS[cost_idx])
 	_upgrade_button.text = "升级产房 +1坑（%d金）" % cost
 	_upgrade_button.disabled = _game_state.coins < cost
@@ -216,11 +217,11 @@ func _on_upgrade_pressed() -> void:
 
 # ─── 辅助 ─────────────────────────────────────────────────────────────────────
 
-func _collect_breedable_cats() -> Array[CatData]:
-	var result: Array[CatData] = []
+func _collect_breedable_cats() -> Array:
+	var result: Array = []
 	if _game_state == null:
 		return result
-	for cat: CatData in _game_state.cats:
+	for cat in _game_state.cats:
 		if cat == null or cat.status == GameConstants.LIFECYCLE_STATUS_DEAD:
 			continue
 		if cat.age_days < GameConstants.KITTEN_DAYS or not cat.can_breed():
@@ -228,10 +229,9 @@ func _collect_breedable_cats() -> Array[CatData]:
 		result.append(cat)
 	return result
 
-func _selected_parent(option: OptionButton) -> CatData:
+func _selected_parent(option: OptionButton) -> Object:
 	if option.selected < 0:
 		return null
-	# 父本取 males 区间，母本取 females 区间
 	var is_father := (option == _father_option)
 	if is_father:
 		var idx := clampi(option.selected, 0, _male_count - 1)

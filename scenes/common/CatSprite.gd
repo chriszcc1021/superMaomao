@@ -1,6 +1,9 @@
 class_name CatSprite
 extends Node2D
 
+const CatData       := preload("res://resources/CatData.gd")
+const GameConstants := preload("res://data/constants.gd")
+
 
 @export var auto_wander: bool = true
 @export var wander_rect: Rect2 = Rect2(Vector2(120.0, 110.0), Vector2(900.0, 500.0))

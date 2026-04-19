@@ -1,6 +1,8 @@
 class_name BreedingSystem
 extends RefCounted
 
+const CatData       := preload("res://resources/CatData.gd")
+const GameConstants := preload("res://data/constants.gd")
 
 func breed(father: CatData, mother: CatData, child_breed: String, child_profession: String) -> CatData:
 	if father == null or mother == null:

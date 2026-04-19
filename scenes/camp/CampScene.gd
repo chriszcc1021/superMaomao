@@ -1,5 +1,8 @@
 extends Node2D
 
+const GameConstants := preload("res://data/constants.gd")
+const CatData       := preload("res://resources/CatData.gd")
+
 const CatSpriteScene := preload("res://scenes/common/CatSprite.tscn")
 const DayManagerScript := preload("res://scenes/camp/DayManager.gd")
 const StarterCatPreviewScript := preload("res://scenes/camp/ui/StarterCatPreview.gd")

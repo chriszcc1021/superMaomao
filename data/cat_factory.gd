@@ -1,6 +1,8 @@
 class_name CatFactory
 extends RefCounted
 
+const CatData       := preload("res://resources/CatData.gd")
+const GameConstants := preload("res://data/constants.gd")
 
 static func create_random_stray_cat(
 	id_prefix: String = "stray",

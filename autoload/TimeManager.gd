@@ -1,5 +1,8 @@
 extends Node
 
+const CatData       := preload("res://resources/CatData.gd")
+const GameConstants := preload("res://data/constants.gd")
+
 const DAY_DURATION_SEC := 480.0
 const NIGHT_FRACTION := 0.25
 const DAY_FRACTION := 0.75
@@ -173,7 +176,10 @@ func _try_load_save() -> void:
 	if data.has("expedition_buffs"):
 		game_state.expedition_buffs = data["expedition_buffs"]
 	if data.has("expedition_active_genes"):
-		game_state.expedition_active_genes = data["expedition_active_genes"]
+		var genes: Array[String] = []
+		for g in data["expedition_active_genes"]:
+			genes.append(str(g))
+		game_state.expedition_active_genes = genes
 	if data.has("expedition_shop_cards"):
 		game_state.expedition_shop_cards = data["expedition_shop_cards"]
 	game_state.ensure_intro_state()

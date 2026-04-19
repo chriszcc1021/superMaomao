@@ -1,6 +1,11 @@
 extends Node
 
-# BreedingSystem 已有 class_name，全局可用，无需 preload
+# Preloader autoload 确保这些 class_name 在 GameState 解析前已注册
+# 但为安全起见保留显式引用（Godot 4.2 autoload 有时仍需要）
+const CatData        := preload("res://resources/CatData.gd")
+const GameConstants  := preload("res://data/constants.gd")
+const CatFactory     := preload("res://data/cat_factory.gd")
+const BreedingSystem := preload("res://scenes/camp/BreedingSystem.gd")
 
 const DEFAULT_BUILDINGS_BUILT := {
 	"cat_house": true,
