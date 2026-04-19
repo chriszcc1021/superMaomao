@@ -153,6 +153,8 @@ func _bind_signals() -> void:
 		_game_state.cat_added.connect(_on_game_cat_added)
 	if _event_bus != null and not _event_bus.stray_cat_arrived.is_connected(_on_stray_cat_arrived):
 		_event_bus.stray_cat_arrived.connect(_on_stray_cat_arrived)
+	if _event_bus != null and not _event_bus.breeding_success.is_connected(_on_breeding_success):
+		_event_bus.breeding_success.connect(_on_breeding_success)
 	if _breeding_ui.has_method("bind_game_state"):
 		_breeding_ui.call("bind_game_state", _game_state)
 
@@ -308,8 +310,14 @@ func _show_building_sidebar(building_id: String) -> void:
 			else:
 				lines.append("✅ 已达最高等级")
 		"nursery":
+			var n_slots: int = _game_state.max_breeding_slots
 			lines.append("🍼 产房")
 			lines.append("繁育成功率：%d%%" % int(GameConstants.BREED_SUCCESS_WITH_NURSERY * 100.0))
+			lines.append("当前坑位：%d / %d" % [n_slots, GameConstants.BREEDING_SLOT_MAX])
+			lines.append("繁育周期：%d 天" % GameConstants.BREEDING_SLOT_CD_DAYS)
+			if n_slots < GameConstants.BREEDING_SLOT_MAX:
+				var upgrade_cost: int = int(GameConstants.BREEDING_SLOT_UPGRADE_COSTS[n_slots - 1])
+				lines.append("升级费用：%d金（当前 %d金）" % [upgrade_cost, _game_state.coins])
 		"hospital":
 			lines.append("🏥 医院")
 			lines.append("每天治愈在此工作的病猫")
@@ -363,6 +371,16 @@ func _add_upgrade_buttons(building_id: String) -> void:
 				_add_action_button(
 					"🪙 升级神龛 Lv%d→%d -%d金" % [lv, lv + 1, cost],
 					_on_upgrade_building.bind("fortune_cat"),
+					can_afford
+				)
+		"nursery":
+			var n_slots: int = _game_state.max_breeding_slots
+			if n_slots < GameConstants.BREEDING_SLOT_MAX:
+				var upgrade_cost: int = int(GameConstants.BREEDING_SLOT_UPGRADE_COSTS[n_slots - 1])
+				var can_afford: bool = _game_state.coins >= upgrade_cost
+				_add_action_button(
+					"🍼 扩建产房坑位 %d→%d（-%d金）" % [n_slots, n_slots + 1, upgrade_cost],
+					_on_upgrade_building.bind("nursery"),
 					can_afford
 				)
 
@@ -561,6 +579,11 @@ func _on_game_cat_added(_cat: CatData) -> void:
 func _on_stray_cat_arrived(_cat: CatData) -> void:
 	_refresh_stray_ui()
 	_set_sidebar_text("一只流浪猫到访营地！")
+
+func _on_breeding_success(child: CatData) -> void:
+	_set_sidebar_text("🐱 新生！%s 在产房诞生了。" % child.cat_name)
+	if _breeding_ui.has_method("refresh"):
+		_breeding_ui.call("refresh")
 
 func _status_zh(status_id: String) -> String:
 	return str(STATUS_DISPLAY.get(status_id, status_id))

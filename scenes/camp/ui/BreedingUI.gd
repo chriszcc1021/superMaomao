@@ -1,6 +1,6 @@
 extends PanelContainer
 
-const BreedingSystem := preload("res://scenes/camp/BreedingSystem.gd")
+# BreedingSystem 已有 class_name，全局可用，无需 preload
 
 @onready var _slots_container: HBoxContainer = $VBox/SlotsContainer
 @onready var _form_panel: PanelContainer = $VBox/FormPanel
@@ -71,8 +71,8 @@ func _make_slot_card(idx: int, slot: Dictionary) -> PanelContainer:
 	vbox.add_child(title)
 
 	if slot.get("active", false):
-		var father := _game_state._find_cat(str(slot.get("father_id", "")))
-		var mother := _game_state._find_cat(str(slot.get("mother_id", "")))
+		var father := _game_state.find_cat(str(slot.get("father_id", "")))
+		var mother := _game_state.find_cat(str(slot.get("mother_id", "")))
 		var father_name := father.cat_name if father != null else "未知"
 		var mother_name := mother.cat_name if mother != null else "未知"
 
@@ -167,7 +167,7 @@ func _on_confirm_pressed() -> void:
 		_status_label.text = "猫窝已满，无法繁育。"
 		return
 
-	var ok: bool = _game_state.start_breeding_in_slot(_active_slot_idx, father.id, mother.id)
+	var ok: bool = _game_state.start_breeding_in_slot(_active_slot_idx, father.id, mother.id, _selected_child_breed(), _selected_child_profession())
 	if ok:
 		_status_label.text = "繁育启动！%d 天后诞生。" % GameConstants.BREEDING_SLOT_CD_DAYS
 		_form_panel.visible = false

@@ -1,6 +1,6 @@
 extends Node
 
-const BreedingSystem := preload("res://scenes/camp/BreedingSystem.gd")
+# BreedingSystem 已有 class_name，全局可用，无需 preload
 
 const DEFAULT_BUILDINGS_BUILT := {
 	"cat_house": true,
@@ -365,7 +365,7 @@ func get_breeding_slot(index: int) -> Dictionary:
 	return breeding_slots[index]
 
 ## 启动一个坑位的繁育。成功返回 true，失败返回 false。
-func start_breeding_in_slot(slot_idx: int, father_id: String, mother_id: String) -> bool:
+func start_breeding_in_slot(slot_idx: int, father_id: String, mother_id: String, child_breed: String, child_profession: String) -> bool:
 	if slot_idx < 0 or slot_idx >= breeding_slots.size():
 		return false
 	var slot: Dictionary = breeding_slots[slot_idx]
@@ -375,8 +375,8 @@ func start_breeding_in_slot(slot_idx: int, father_id: String, mother_id: String)
 		return false
 	# 成功率检定
 	var chance := GameConstants.BREED_SUCCESS_WITH_NURSERY if has_building("nursery") else GameConstants.BREED_SUCCESS_WITHOUT_NURSERY
-	var father := _find_cat(father_id)
-	var mother := _find_cat(mother_id)
+	var father := find_cat(father_id)
+	var mother := find_cat(mother_id)
 	if father != null and (father.has_gene("love_spreader") or (mother != null and mother.has_gene("love_spreader"))):
 		chance = minf(1.0, chance + 0.15)
 	if randf() > chance:
@@ -384,6 +384,8 @@ func start_breeding_in_slot(slot_idx: int, father_id: String, mother_id: String)
 	slot["active"] = true
 	slot["father_id"] = father_id
 	slot["mother_id"] = mother_id
+	slot["child_breed"] = child_breed
+	slot["child_profession"] = child_profession
 	slot["days_remaining"] = GameConstants.BREEDING_SLOT_CD_DAYS
 	if father != null:
 		father.breed_count += 1
@@ -402,12 +404,12 @@ func tick_breeding_slots() -> Array[CatData]:
 		if slot["days_remaining"] > 0:
 			continue
 		# 出生
-		var father := _find_cat(str(slot.get("father_id", "")))
-		var mother := _find_cat(str(slot.get("mother_id", "")))
+		var father := find_cat(str(slot.get("father_id", "")))
+		var mother := find_cat(str(slot.get("mother_id", "")))
 		if father != null and mother != null:
 			var breeding_sys := BreedingSystem.new()
-			var child_breed := father.breed
-			var child_profession := father.profession
+			var child_breed := str(slot.get("child_breed", father.breed))
+			var child_profession := str(slot.get("child_profession", father.profession))
 			var child := breeding_sys.breed(father, mother, child_breed, child_profession)
 			if child != null and add_cat(child):
 				born.append(child)
@@ -418,7 +420,7 @@ func tick_breeding_slots() -> Array[CatData]:
 		slot["days_remaining"] = 0
 	return born
 
-func _find_cat(cat_id: String) -> CatData:
+func find_cat(cat_id: String) -> CatData:
 	if cat_id.is_empty():
 		return null
 	for cat: CatData in cats:
