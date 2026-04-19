@@ -2,6 +2,7 @@ class_name SpawnManager
 extends Node
 
 const EnemyData := preload("res://data/enemies/enemy_data.gd")
+const GameConstants := preload("res://data/constants.gd")
 const EnemyScene := preload("res://scenes/battle/entities/Enemy.tscn")
 
 signal enemy_defeated(enemy_type: String, fish_drop: int, position: Vector2)
@@ -20,6 +21,7 @@ var _elite_spawned: bool = false
 var _boss_spawned_once: bool = false
 
 var _enemy_defs: Dictionary = {}
+var _difficulty: Dictionary = {}  # 当前层难度参数
 
 func _ready() -> void:
 	_enemy_defs = EnemyData.get_enemy_definitions()
@@ -30,7 +32,13 @@ func configure(node_type: String, enemies_root: Node2D, player_cat: Node2D) -> v
 	_player_cat = player_cat
 	_elapsed = 0.0
 	_opening_wave_index = 0
-	_regular_spawn_cd = GameConstants.BATTLE_SPAWN_CD_NORMAL_INITIAL
+	# 读取当前远征层难度
+	var layer := 1
+	var game_state := get_node_or_null("/root/GameState")
+	if game_state != null:
+		layer = clampi(int(game_state.expedition_layer), 1, 6)
+	_difficulty = GameConstants.LAYER_DIFFICULTY.get(layer, GameConstants.LAYER_DIFFICULTY[1])
+	_regular_spawn_cd = float(_difficulty.get("cd_initial", GameConstants.BATTLE_SPAWN_CD_NORMAL_INITIAL))
 	_elite_spawned = false
 	_boss_spawned_once = false
 
@@ -63,7 +71,10 @@ func _process_normal_mode(delta: float) -> void:
 	_regular_spawn_cd -= delta
 	if _regular_spawn_cd > 0.0:
 		return
-	_regular_spawn_cd = randf_range(GameConstants.BATTLE_SPAWN_CD_NORMAL_MIN, GameConstants.BATTLE_SPAWN_CD_NORMAL_MAX)
+	_regular_spawn_cd = randf_range(
+		float(_difficulty.get("cd_min", GameConstants.BATTLE_SPAWN_CD_NORMAL_MIN)),
+		float(_difficulty.get("cd_max", GameConstants.BATTLE_SPAWN_CD_NORMAL_MAX))
+	)
 	var roll := randf()
 	if roll < GameConstants.BATTLE_NORMAL_ROLL_SMALL_MONKEY:
 		_spawn_enemy_group("small_monkey", randi_range(GameConstants.BATTLE_NORMAL_SMALL_MONKEY_MIN, GameConstants.BATTLE_NORMAL_SMALL_MONKEY_MAX))
@@ -83,7 +94,10 @@ func _process_elite_mode(delta: float) -> void:
 	_regular_spawn_cd -= delta
 	if _regular_spawn_cd > 0.0:
 		return
-	_regular_spawn_cd = randf_range(GameConstants.BATTLE_SPAWN_CD_ELITE_MIN, GameConstants.BATTLE_SPAWN_CD_ELITE_MAX)
+	_regular_spawn_cd = randf_range(
+		float(_difficulty.get("cd_min", GameConstants.BATTLE_SPAWN_CD_ELITE_MIN)),
+		float(_difficulty.get("cd_max", GameConstants.BATTLE_SPAWN_CD_ELITE_MAX))
+	)
 	_spawn_enemy_group("small_monkey", randi_range(GameConstants.BATTLE_ELITE_SMALL_MONKEY_MIN, GameConstants.BATTLE_ELITE_SMALL_MONKEY_MAX))
 	_spawn_enemy_group("stone_monkey", randi_range(GameConstants.BATTLE_ELITE_STONE_MONKEY_MIN, GameConstants.BATTLE_ELITE_STONE_MONKEY_MAX))
 
@@ -107,6 +121,12 @@ func _spawn_enemy(enemy_id: String) -> Node:
 		return null
 	var def: Dictionary = raw.duplicate(true)
 	def["id"] = enemy_id
+	# 应用层难度缩放（Boss 不缩放，由 Boss 本身数值控制）
+	if enemy_id != "boss_gorilla_king":
+		var hp_mult := float(_difficulty.get("hp_mult", 1.0))
+		var dmg_mult := float(_difficulty.get("dmg_mult", 1.0))
+		def["hp"] = float(def.get("hp", 30.0)) * hp_mult
+		def["damage"] = float(def.get("damage", 8.0)) * dmg_mult
 	var enemy := EnemyScene.instantiate()
 	enemy.global_position = _random_spawn_pos()
 	enemy.setup(def, _player_cat)

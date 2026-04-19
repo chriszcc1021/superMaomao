@@ -325,6 +325,7 @@ const LIFECYCLE_STATUS_EXPEDITION := "expedition"
 const LIFECYCLE_STATUS_RETIRED := "retired"
 const LIFECYCLE_STATUS_ELDER := "elder"
 const LIFECYCLE_STATUS_DEAD := "dead"
+const LIFECYCLE_STATUS_BURIED := "buried"  # 已入葬墓地，从坑位释放
 
 const HEALTH_STATE_HEALTHY := "healthy"
 const HEALTH_STATE_SICK := "sick"
@@ -369,6 +370,18 @@ const BATTLE_ELITE_STONE_MONKEY_MAX := 2
 const BATTLE_NORMAL_DURATION := 90.0
 const BATTLE_ELITE_DURATION_MIN := 120.0
 const BATTLE_ELITE_DURATION_MAX := 180.0
+
+# ─── 关卡难度缩放（远征层数 1-6）────────────────────────────────────────────
+# hp_mult / dmg_mult：敌人血量/伤害倍率
+# cd_initial / cd_min / cd_max：生成冷却时间（秒）越小越密
+const LAYER_DIFFICULTY := {
+	1: {"hp_mult": 1.00, "dmg_mult": 1.00, "cd_initial": 3.5, "cd_min": 2.8, "cd_max": 4.2},
+	2: {"hp_mult": 1.25, "dmg_mult": 1.15, "cd_initial": 3.0, "cd_min": 2.3, "cd_max": 3.8},
+	3: {"hp_mult": 1.60, "dmg_mult": 1.35, "cd_initial": 2.5, "cd_min": 1.9, "cd_max": 3.2},
+	4: {"hp_mult": 2.00, "dmg_mult": 1.60, "cd_initial": 2.0, "cd_min": 1.5, "cd_max": 2.7},
+	5: {"hp_mult": 2.50, "dmg_mult": 1.90, "cd_initial": 1.6, "cd_min": 1.2, "cd_max": 2.2},
+	6: {"hp_mult": 1.00, "dmg_mult": 1.00, "cd_initial": 2.0, "cd_min": 2.0, "cd_max": 2.0},  # Boss层单独处理
+}
 
 const BATTLE_OPENING_WAVES := [
 	{"time": 0.0, "small_monkey": 4},

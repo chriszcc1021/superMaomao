@@ -174,9 +174,11 @@ func add_cat(cat: CatData) -> bool:
 
 func get_occupied_cat_house_slots() -> int:
 	var occupied := 0
-	for cat: CatData in get_living_cats():
+	for cat: CatData in cats:
 		if cat == null:
 			continue
+		if cat.status == GameConstants.LIFECYCLE_STATUS_BURIED:
+			continue  # 已入葬，不占坑位
 		occupied += 1
 	return occupied
 
@@ -437,3 +439,33 @@ func find_cat(cat_id: String) -> CatData:
 		if cat != null and cat.id == cat_id:
 			return cat
 	return null
+
+## 入葬猫咪到墓地，生成生平，释放坑位
+func bury_cat(cat_id: String) -> String:
+	var cat := find_cat(cat_id)
+	if cat == null or cat.status != GameConstants.LIFECYCLE_STATUS_DEAD:
+		return ""
+	cat.status = GameConstants.LIFECYCLE_STATUS_BURIED
+	return _generate_biography(cat)
+
+func _generate_biography(cat: CatData) -> String:
+	var lines: PackedStringArray = []
+	lines.append("🪦 %s 生平" % cat.cat_name)
+	lines.append("品种：%s　职业：%s　性别：%s" % [
+		GameConstants.breed_zh(cat.breed),
+		GameConstants.profession_zh(cat.profession),
+		GameConstants.sex_display(cat.sex)
+	])
+	lines.append("享年 %d 天　繁育 %d 次" % [cat.age_days, cat.breed_count])
+	if cat.has_expeditioned:
+		lines.append("曾参与远征，为营地立下功勋。")
+	else:
+		lines.append("未曾出征，守护营地度过一生。")
+	var genes := cat.get_special_genes()
+	if not genes.is_empty():
+		var names: PackedStringArray = []
+		for g: String in genes:
+			names.append(str(GameConstants.GENE_DISPLAY_ZH.get(g, {}).get("name", g)))
+		lines.append("天赋：%s" % "、".join(names))
+	lines.append("愿你在天堂有吃不完的鱼罐头。🐟")
+	return "\n".join(lines)

@@ -37,6 +37,7 @@ const STATUS_DISPLAY := {
 	GameConstants.LIFECYCLE_STATUS_RETIRED: "退休",
 	GameConstants.LIFECYCLE_STATUS_ELDER: "老年",
 	GameConstants.LIFECYCLE_STATUS_DEAD: "死亡",
+	GameConstants.LIFECYCLE_STATUS_BURIED: "已入葬",
 }
 
 @onready var _buildings_root: Node2D = $IsometricWorld/Buildings
@@ -240,15 +241,23 @@ func _show_building_preview(building_id: String) -> void:
 func _refresh_cat_nodes() -> void:
 	for child: Node in _cats_root.get_children():
 		child.queue_free()
-	for cat: CatData in _game_state.get_living_cats():
+	# 活猫 + 死猫（死猫在入葬前占坑位，需要显示）
+	var all_cats: Array = _game_state.cats
+	for cat in all_cats:
+		if cat == null:
+			continue
+		if cat.status == GameConstants.LIFECYCLE_STATUS_BURIED:
+			continue  # 已入葬，不再显示
 		var cat_sprite: Node2D = CatSpriteScene.instantiate()
 		cat_sprite.global_position = _random_cat_spawn_position()
 		cat_sprite.call("setup", cat)
-		var assigned: String = str(cat.assigned_building)
-		if not assigned.is_empty() and BUILDING_LAYOUT.has(assigned):
-			var anchor: Vector2 = BUILDING_LAYOUT[assigned]
-			anchor += Vector2(randf_range(-20.0, 20.0), randf_range(-15.0, 15.0))
-			cat_sprite.call("set_building_anchor", assigned, anchor)
+		# 活猫才设建筑锚点
+		if cat.status != GameConstants.LIFECYCLE_STATUS_DEAD:
+			var assigned: String = str(cat.assigned_building)
+			if not assigned.is_empty() and BUILDING_LAYOUT.has(assigned):
+				var anchor: Vector2 = BUILDING_LAYOUT[assigned]
+				anchor += Vector2(randf_range(-20.0, 20.0), randf_range(-15.0, 15.0))
+				cat_sprite.call("set_building_anchor", assigned, anchor)
 		if cat_sprite.has_signal("drop_requested"):
 			cat_sprite.connect("drop_requested", _on_cat_drop_requested)
 		_cats_root.add_child(cat_sprite)
@@ -324,12 +333,35 @@ func _show_building_sidebar(building_id: String) -> void:
 		"hospital":
 			lines.append("🏥 医院")
 			lines.append("每天治愈在此工作的病猫")
+			lines.append("病态/濒危猫咪无法工作，需送医治疗。")
+			# 列出所有病猫
+			var sick_cats: Array = []
+			for cat in _game_state.get_living_cats():
+				if cat.health != GameConstants.HEALTH_STATE_HEALTHY:
+					sick_cats.append(cat)
+			if sick_cats.is_empty():
+				lines.append("✅ 当前无病猫")
+			else:
+				lines.append("病猫列表：")
+				for cat in sick_cats:
+					var h_zh := "病态" if cat.health == GameConstants.HEALTH_STATE_SICK else "濒危"
+					lines.append("  %s（%s）" % [cat.cat_name, h_zh])
 		"heart_cat_house":
 			lines.append("❤️ 爱心猫窝")
 			lines.append("流浪猫来访概率提升 +20%")
 		"cemetery":
 			lines.append("🪦 墓地")
-			lines.append("记录已逝猫咪")
+			# 列出未入葬的死猫
+			var dead_cats: Array = []
+			for cat in _game_state.cats:
+				if cat != null and cat.status == GameConstants.LIFECYCLE_STATUS_DEAD:
+					dead_cats.append(cat)
+			if dead_cats.is_empty():
+				lines.append("暂无需要入葬的猫咪。")
+			else:
+				lines.append("以下猫咪已离世，等待入葬（占用猫窝坑位）：")
+				for cat in dead_cats:
+					lines.append("  💀 %s（%s）" % [cat.cat_name, GameConstants.breed_zh(cat.breed)])
 	# 分配猫咪区域（产出建筑）
 	if building_id in ["fortune_cat", "food_farm", "gold_mine", "hospital", "nursery", "heart_cat_house"]:
 		lines.append("")
@@ -386,6 +418,48 @@ func _add_upgrade_buttons(building_id: String) -> void:
 					_on_upgrade_building.bind("nursery"),
 					can_afford
 				)
+		"hospital":
+			# 快速将所有病猫分配进医院
+			var sick_cats: Array = []
+			for cat in _game_state.get_living_cats():
+				if cat.health != GameConstants.HEALTH_STATE_HEALTHY:
+					sick_cats.append(cat)
+			if not sick_cats.is_empty():
+				_add_action_button(
+					"🏥 将所有病猫送入医院（%d只）" % sick_cats.size(),
+					_on_send_all_sick_to_hospital,
+					true
+				)
+		"cemetery":
+			# 一键将所有死猫入葬
+			var dead_cats: Array = []
+			for cat in _game_state.cats:
+				if cat != null and cat.status == GameConstants.LIFECYCLE_STATUS_DEAD:
+					dead_cats.append(cat)
+			if not dead_cats.is_empty():
+				_add_action_button(
+					"🪦 入葬所有离世猫咪（%d只）" % dead_cats.size(),
+					_on_bury_all_dead_cats,
+					true
+				)
+
+func _on_send_all_sick_to_hospital() -> void:
+	for cat in _game_state.get_living_cats():
+		if cat.health != GameConstants.HEALTH_STATE_HEALTHY:
+			cat.assigned_building = "hospital"
+	_refresh_all()
+	_show_building_sidebar("hospital")
+
+func _on_bury_all_dead_cats() -> void:
+	var biographies: PackedStringArray = []
+	for cat in _game_state.cats.duplicate():
+		if cat != null and cat.status == GameConstants.LIFECYCLE_STATUS_DEAD:
+			var bio: String = _game_state.bury_cat(cat.id)
+			if not bio.is_empty():
+				biographies.append(bio)
+	if not biographies.is_empty():
+		_set_sidebar_text("\n\n".join(biographies))
+	_refresh_all()
 
 func _on_upgrade_building(building_id: String) -> void:
 	if _game_state == null:
@@ -456,6 +530,25 @@ func _on_cat_drop_requested(cat: CatData, world_pos: Vector2) -> void:
 		if dist < nearest_dist:
 			nearest_dist = dist
 			nearest_id = building_id
+
+	# ── 死亡猫：只能拖进墓地 ──────────────────────────────────────────────────
+	if cat.status == GameConstants.LIFECYCLE_STATUS_DEAD:
+		if nearest_id == "cemetery" and _game_state.has_building("cemetery"):
+			var bio: String = _game_state.bury_cat(cat.id)
+			if not bio.is_empty():
+				_set_sidebar_text(bio)
+		_refresh_all()
+		return
+
+	# ── 病态猫：只能拖进医院 ──────────────────────────────────────────────────
+	if cat.health != GameConstants.HEALTH_STATE_HEALTHY:
+		if nearest_id == "hospital" and _game_state.has_building("hospital"):
+			cat.assigned_building = "hospital"
+			_set_sidebar_text("🏥 %s 已送入医院治疗。" % cat.cat_name)
+		else:
+			_set_sidebar_text("⚠️ 病猫只能送入医院治疗！")
+		_refresh_cat_nodes()
+		return
 
 	if nearest_id.is_empty():
 		cat.assigned_building = ""
@@ -538,9 +631,19 @@ func _refresh_hud() -> void:
 
 func _refresh_cat_list() -> void:
 	var lines: PackedStringArray = []
-	for cat: CatData in _game_state.cats:
+	for cat in _game_state.cats:
+		if cat == null:
+			continue
+		if cat.status == GameConstants.LIFECYCLE_STATUS_BURIED:
+			continue
+		var health_tag := ""
+		if cat.status != GameConstants.LIFECYCLE_STATUS_DEAD:
+			match cat.health:
+				GameConstants.HEALTH_STATE_SICK:     health_tag = " 🤒"
+				GameConstants.HEALTH_STATE_CRITICAL: health_tag = " 🆘"
+		var dead_tag := " 💀（拖入墓地入葬）" if cat.status == GameConstants.LIFECYCLE_STATUS_DEAD else ""
 		lines.append(
-			"%s | %s | %s | %s | %d天 | %s"
+			"%s | %s | %s | %s | %d天 | %s%s%s"
 			% [
 				cat.cat_name,
 				GameConstants.sex_display(cat.sex),
@@ -548,6 +651,8 @@ func _refresh_cat_list() -> void:
 				GameConstants.breed_zh(cat.breed),
 				cat.age_days,
 				_status_zh(cat.status),
+				health_tag,
+				dead_tag,
 			]
 		)
 	if lines.is_empty():

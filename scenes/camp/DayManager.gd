@@ -204,6 +204,8 @@ func _count_available_workers(game_state: Node) -> int:
 			continue
 		if cat.age_days < GameConstants.KITTEN_DAYS:
 			continue
+		if cat.health != GameConstants.HEALTH_STATE_HEALTHY:
+			continue  # 病态/濒危猫不能工作
 		count += 1
 	return count
 

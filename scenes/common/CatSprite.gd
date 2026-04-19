@@ -70,6 +70,9 @@ func _update_anim_state() -> void:
 	if cat_data == null:
 		_anim_state = "wander"
 		return
+	if cat_data.status == GameConstants.LIFECYCLE_STATUS_DEAD:
+		_anim_state = "dead"
+		return
 	if cat_data.health == GameConstants.HEALTH_STATE_SICK or cat_data.health == GameConstants.HEALTH_STATE_CRITICAL:
 		_anim_state = "sick"
 		return
@@ -134,6 +137,21 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	if _anim_state == "expedition":
 		return
+
+	# 死亡：半透明灰色幽灵
+	if _anim_state == "dead":
+		modulate = Color(0.6, 0.6, 0.7, 0.55)
+		var r := 14.0
+		draw_circle(Vector2.ZERO, r, Color(0.5, 0.5, 0.6))
+		# X 形眼睛
+		for sign_x in [-1, 1]:
+			var ex := Vector2(sign_x * 5.0, -2.0)
+			draw_line(ex + Vector2(-2.5, -2.5), ex + Vector2(2.5, 2.5), Color.WHITE, 1.5)
+			draw_line(ex + Vector2(2.5, -2.5), ex + Vector2(-2.5, 2.5), Color.WHITE, 1.5)
+		draw_string(ThemeDB.fallback_font, Vector2(-8.0, -22.0), "💀", HORIZONTAL_ALIGNMENT_LEFT, -1, 14)
+		return
+	else:
+		modulate = Color.WHITE
 
 	var cat_color := _get_cat_color()
 	var scale_mult := 1.3 if _dragging else 1.0
