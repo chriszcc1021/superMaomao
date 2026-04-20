@@ -1,9 +1,9 @@
 extends Control
 
 const ExpeditionSystem := preload("res://scenes/expedition/ExpeditionSystem.gd")
-const GameConsts := preload("res://data/constants.gd")
-const CAMP_SCENE_PATH := "res://scenes/camp/CampScene.tscn"
-
+const CatData          := preload("res://resources/CatData.gd")
+const GameConsts       := preload("res://data/constants.gd")
+const CAMP_SCENE_PATH  := "res://scenes/camp/CampScene.tscn"
 @onready var _cat_option: OptionButton = $Panel/VBox/SetupRow/CatOption
 @onready var _start_button: Button = $Panel/VBox/SetupRow/StartButton
 @onready var _back_button: Button = $Panel/VBox/SetupRow/BackToCampButton
