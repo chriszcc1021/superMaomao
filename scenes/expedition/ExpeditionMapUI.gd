@@ -89,7 +89,14 @@ func _on_start_pressed() -> void:
 	_refresh_view()
 
 func _on_back_pressed() -> void:
-	_go_to_camp()
+	# 远征进行中不允许手动返回营地，只能战败或胜利才能回营
+	var game_state := _get_game_state()
+	if game_state != null and game_state.expedition_active:
+		_status_label.text = "远征进行中，无法撤退！"
+		return
+	var scene_manager := _get_scene_manager()
+	if scene_manager != null:
+		scene_manager.go_to_camp()
 
 func _process_returned_shop() -> void:
 	var scene_manager := _get_scene_manager()
@@ -121,6 +128,8 @@ func _refresh_view() -> void:
 		_log_text.text = "缺少游戏状态。"
 		_clear_nodes()
 		return
+	# 远征中隐藏返回按钮，只有未出发时才能手动回营地
+	_back_button.visible = not game_state.expedition_active
 	if not game_state.expedition_active:
 		_layer_label.text = "层数: -"
 		if _eligible_cats.is_empty():

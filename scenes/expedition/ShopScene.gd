@@ -1,8 +1,8 @@
 extends Control
 
+const WeaponCards   := preload("res://data/cards/weapon_cards.gd")
+const BuffCards     := preload("res://data/cards/buff_cards.gd")
 const GameConstants := preload("res://data/constants.gd")
-const WeaponCards := preload("res://data/cards/weapon_cards.gd")
-const BuffCards := preload("res://data/cards/buff_cards.gd")
 
 var _shop_cards: Array[Dictionary] = []
 var _purchased: bool = false
