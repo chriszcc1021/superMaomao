@@ -1,7 +1,8 @@
 class_name Enemy
 extends CharacterBody2D
 
-const FloatingText := preload("res://scenes/common/FloatingText.gd")
+const FloatingText    := preload("res://scenes/common/FloatingText.gd")
+const GameConstants   := preload("res://data/constants.gd")
 
 signal died(enemy_type: String, fish_drop: int, world_position: Vector2)
 

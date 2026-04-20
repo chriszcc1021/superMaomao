@@ -1,7 +1,9 @@
 class_name PlayerCat
 extends CharacterBody2D
 
-const FloatingText := preload("res://scenes/common/FloatingText.gd")
+const FloatingText  := preload("res://scenes/common/FloatingText.gd")
+const CatData       := preload("res://resources/CatData.gd")
+const GameConstants := preload("res://data/constants.gd")
 
 signal hp_changed(current_hp: float, max_hp: float)
 signal died

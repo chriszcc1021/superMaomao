@@ -1,8 +1,11 @@
 extends Node2D
 
-const WeaponCards := preload("res://data/cards/weapon_cards.gd")
-const BuffCards := preload("res://data/cards/buff_cards.gd")
-const FishItem := preload("res://scenes/battle/entities/FishItem.gd")
+const WeaponCards   := preload("res://data/cards/weapon_cards.gd")
+const BuffCards     := preload("res://data/cards/buff_cards.gd")
+const FishItem      := preload("res://scenes/battle/entities/FishItem.gd")
+const CatData       := preload("res://resources/CatData.gd")
+const CardData      := preload("res://resources/CardData.gd")
+const GameConstants := preload("res://data/constants.gd")
 
 @onready var _player_cat: Node2D = $World/PlayerCat
 @onready var _enemies_root: Node2D = $World/Enemies
