@@ -8,8 +8,11 @@ const FLOAT_DURATION := 0.8  # 秒
 const FLOAT_RISE := 40.0     # 像素（向上飘移距离）
 const FONT_SIZE := 14
 
+# Fix: 用场景文件实例化，避免 class_name 自引用在热重载时报错
+const _Scene := preload("res://scenes/common/FloatingText.tscn")
+
 static func spawn(parent: Node, world_pos: Vector2, display_text: String, color: Color = Color.WHITE) -> void:
-	var ft := FloatingText.new()
+	var ft: Node2D = _Scene.instantiate()
 	ft.global_position = world_pos
 	ft._text = display_text
 	ft._color = color

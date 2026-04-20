@@ -371,6 +371,10 @@ const BATTLE_NORMAL_DURATION := 90.0
 const BATTLE_ELITE_DURATION_MIN := 120.0
 const BATTLE_ELITE_DURATION_MAX := 180.0
 
+# 战斗局内小鱼干升级经验（设计文档§5.4：Lv1→2需5个，之后每级+10）
+const BATTLE_FISH_XP_BASE := 5       # Lv1→2 所需小鱼干
+const BATTLE_FISH_XP_INCREMENT := 10 # 每升一级额外增加
+
 # ─── 关卡难度缩放（远征层数 1-6）────────────────────────────────────────────
 # hp_mult / dmg_mult：敌人血量/伤害倍率
 # cd_initial / cd_min / cd_max：生成冷却时间（秒）越小越密

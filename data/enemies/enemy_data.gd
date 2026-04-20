@@ -3,7 +3,7 @@ extends RefCounted
 
 static func get_enemy_definitions() -> Dictionary:
 	var result := {}
-	for file_name in ["base_enemies", "elite_enemies", "bosses"]:
+	for file_name: String in ["base_enemies", "elite_enemies", "bosses"]:
 		var path: String = "res://data/enemies/%s.json" % file_name
 		var f := FileAccess.open(path, FileAccess.READ)
 		if f == null:

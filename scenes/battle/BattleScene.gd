@@ -538,7 +538,8 @@ func _close_gene_popup_and_continue() -> void:
 		_set_enemies_paused(false)
 
 func _xp_required_for_level(level: int) -> int:
-	return GameConstants.CAT_XP_BASE + level * GameConstants.CAT_XP_INCREMENT
+	# 设计文档§5.4：Lv1→2需5条，之后每级+10（5, 15, 25, 35...）
+	return GameConstants.BATTLE_FISH_XP_BASE + (level - 1) * GameConstants.BATTLE_FISH_XP_INCREMENT
 
 func _on_player_hp_changed(_cur: float, _max: float) -> void:
 	_refresh_hud()
