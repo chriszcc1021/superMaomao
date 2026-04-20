@@ -294,7 +294,7 @@ func _apply_card(card: CardData) -> void:
 		_cards.append(card)
 		_card_by_id[card.id] = card
 		existing = card
-	elif (existing as CardData).can_stack():
+	elif card.card_type != "weapon" and (existing as CardData).can_stack():
 		(existing as CardData).add_stack()
 
 	if card.card_type == "weapon":
