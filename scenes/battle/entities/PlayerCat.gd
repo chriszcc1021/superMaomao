@@ -184,14 +184,21 @@ func take_damage(amount: float) -> void:
 		current_hp = max_hp * 0.20
 		_revive_iframes = 2.0
 		if get_parent() != null:
-			FloatingText.spawn(get_parent(), global_position + Vector2(0, -30), "坚韧复生！", Color(1.0, 0.92, 0.2))
+			var _ft_r := FloatingText.new()
+			_ft_r._text = "坚韧复生！"
+			_ft_r._color = Color(1.0, 0.92, 0.2)
+			_ft_r.global_position = global_position + Vector2(0, -30)
+			get_parent().add_child(_ft_r)
 	# 更新动态加成（desperado / survival_rush / coward）
 	_recalculate_dynamic_gene_effects()
 	hp_changed.emit(current_hp, max_hp)
 	queue_redraw()
 	if get_parent() != null:
-		FloatingText.spawn(get_parent(), global_position + Vector2(randf_range(-6.0, 6.0), -20.0),
-			"-%d" % int(amount), Color(0.95, 0.2, 0.2))
+		var _ft := FloatingText.new()
+		_ft._text = "-%d" % int(amount)
+		_ft._color = Color(0.95, 0.2, 0.2)
+		_ft.global_position = global_position + Vector2(randf_range(-6.0, 6.0), -20.0)
+		get_parent().add_child(_ft)
 	if current_hp <= 0.0:
 		died.emit()
 

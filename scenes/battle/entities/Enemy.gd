@@ -76,7 +76,11 @@ func take_damage(amount: float) -> void:
 	current_hp -= amount
 	queue_redraw()
 	if get_parent() != null:
-		FloatingText.spawn(get_parent(), global_position + Vector2(randf_range(-8.0, 8.0), -16.0), "-%d" % int(amount), Color(1.0, 0.85, 0.2, 1.0))
+		var _ft := FloatingText.new()
+		_ft._text = "-%d" % int(amount)
+		_ft._color = Color(1.0, 0.85, 0.2, 1.0)
+		_ft.global_position = global_position + Vector2(randf_range(-8.0, 8.0), -16.0)
+		get_parent().add_child(_ft)
 	if current_hp <= 0.0:
 		died.emit(enemy_type, fish_drop, global_position)
 		queue_free()
