@@ -593,6 +593,8 @@ func _on_cat_drop_requested(cat: CatData, world_pos: Vector2) -> void:
 			var old_cap: int = _get_building_worker_cap(old_id)
 			var old_count: int = _count_assigned_cats(old_id) - 1
 			if old_count < old_cap:
+				# Bug fix: 执行分配后再返回，之前缺少赋值直接 return
+				cat.assigned_building = nearest_id
 				_refresh_cat_nodes()
 				return
 		cat.assigned_building = ""

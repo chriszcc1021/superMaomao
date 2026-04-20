@@ -69,10 +69,10 @@ func _check_lifecycle(game_state: Node) -> void:
 func _produce_resources(game_state: Node) -> void:
 	# community_planner：全局产出加成
 	var community_bonus := _calc_community_planner_bonus(game_state)
-	var workers: int = _count_available_workers(game_state)
 
 	if game_state.has_building("food_farm"):
-		var food_workers: int = min(workers, 3)
+		# Bug fix: 使用实际分配到猫粮田的猫数，而非总可用猫数
+		var food_workers: int = _count_workers_at_building(game_state, "food_farm")
 		var food_gain: int = int(GameConstants.FOOD_FARM_OUTPUT_BY_WORKERS.get(food_workers, 3))
 		# hard_worker 加成（猫粮田中有hard_worker猫）
 		food_gain = _apply_worker_gene_bonus(game_state, "food_farm", food_gain)
@@ -82,7 +82,8 @@ func _produce_resources(game_state: Node) -> void:
 		game_state.add_cat_food(3)
 
 	if game_state.has_building("gold_mine"):
-		var gold_workers: int = min(max(workers - 3, 0), 2)
+		# Bug fix: 使用实际分配到金矿的猫数，而非总可用猫数的剩余
+		var gold_workers: int = _count_workers_at_building(game_state, "gold_mine")
 		var gold_gain: int = int(GameConstants.GOLD_MINE_OUTPUT_BY_WORKERS.get(gold_workers, 2))
 		# hard_worker + walnut_cracker 加成
 		gold_gain = _apply_worker_gene_bonus(game_state, "gold_mine", gold_gain)
@@ -149,8 +150,10 @@ func _process_hospital_healing(game_state: Node) -> void:
 			hospital_workers_with_mini_nurse += 1
 	if hospital_workers_with_mini_nurse > 0:
 		heal_rate = 1.5
-	# 治疗在医院里的病猫
+	# Bug fix: 只治疗分配到医院的病猫，而非所有病猫
 	for cat: CatData in game_state.get_living_cats():
+		if str(cat.assigned_building) != "hospital":
+			continue
 		if cat.health == GameConstants.HEALTH_STATE_SICK and heal_rate >= 1.5:
 			cat.health = GameConstants.HEALTH_STATE_HEALTHY
 		elif cat.health == GameConstants.HEALTH_STATE_CRITICAL:
