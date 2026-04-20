@@ -114,6 +114,10 @@ func _setup_cat_genes() -> void:
 			genes.append(slot_gene)
 	if not genes.is_empty():
 		_player_cat.setup_genes(genes)
+	# 品种差异化基础爪击
+	var weapon_system: Node = _player_cat.get_weapon_system()
+	if weapon_system != null and weapon_system.has_method("setup_breed"):
+		weapon_system.call("setup_breed", str(_selected_cat.breed))
 
 func _cat_has_gene(gene_id: String) -> bool:
 	if _selected_cat == null:

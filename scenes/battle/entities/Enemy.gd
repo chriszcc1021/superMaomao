@@ -72,18 +72,27 @@ func _physics_process(delta: float) -> void:
 		if _target.has_method("take_damage"):
 			_target.call("take_damage", damage)
 
-func take_damage(amount: float) -> void:
+func take_damage(amount: float, is_crit: bool = false) -> void:
 	current_hp -= amount
 	queue_redraw()
 	if get_parent() != null:
 		var _ft := FloatingText.new()
-		_ft._text = "-%d" % int(amount)
-		_ft._color = Color(1.0, 0.85, 0.2, 1.0)
+		if is_crit:
+			_ft._text = "!!-%d" % int(amount)
+			_ft._color = Color(1.0, 0.45, 0.0, 1.0)   # 橙色 = 暴击
+		else:
+			_ft._text = "-%d" % int(amount)
+			_ft._color = Color(1.0, 0.85, 0.2, 1.0)   # 黄色 = 普通
 		_ft.global_position = global_position + Vector2(randf_range(-8.0, 8.0), -16.0)
 		get_parent().add_child(_ft)
 	if current_hp <= 0.0:
 		died.emit(enemy_type, fish_drop, global_position)
 		queue_free()
+
+func apply_knockback(impulse: Vector2) -> void:
+	# 击退：给敌人一个短暂的位移冲量
+	if has_method("move_and_slide"):
+		velocity += impulse
 
 func _draw() -> void:
 	var col := tint_color
