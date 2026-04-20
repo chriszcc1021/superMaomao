@@ -2,7 +2,12 @@ class_name FishItem
 extends Node2D
 
 # 小鱼干掉落物，落地后等待玩家拾取
-# 进入磁吸范围后自动向玩家移动，进入拾取范围后收集
+# 使用方法：
+#   var item := FishItem.new()
+#   item.global_position = world_pos
+#   item.amount = fish_amount
+#   item._player = player
+#   parent.add_child(item)
 
 signal collected(amount: int)
 
