@@ -275,17 +275,17 @@ func get_breedable_cats() -> Array[CatData]:
 
 func get_expedition_block_reason(cat: CatData) -> String:
 	if cat == null:
-		return "No cat selected."
+		return "没有选择出征猫。"
 	if cat.status == GameConstants.LIFECYCLE_STATUS_DEAD:
-		return "Dead cats cannot join expeditions."
+		return "死亡的猫不能出征。"
 	if cat.status == GameConstants.LIFECYCLE_STATUS_BURIED:
-		return "This cat is no longer available."
+		return "这只猫已经不可用。"
 	if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
-		return "This cat is already on expedition."
+		return "这只猫已经在远征中。"
 	if cat.health != GameConstants.HEALTH_STATE_HEALTHY:
-		return "Only healthy cats can join expeditions."
+		return "只有健康状态的猫可以出征。"
 	if is_cat_breeding(cat):
-		return "Breeding cats cannot join expeditions."
+		return "繁育中的猫不能出征。"
 	return ""
 
 func can_cat_join_expedition(cat: CatData) -> bool:

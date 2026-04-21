@@ -32,22 +32,22 @@ func _refresh_cat_options() -> void:
 	_cat_option.clear()
 	var game_state := _get_game_state()
 	if game_state == null:
-		_cat_option.add_item("Missing game state")
+		_cat_option.add_item("缺少游戏状态")
 		_cat_option.disabled = true
 		_start_button.disabled = true
 		return
 	if game_state.expedition_active:
 		var expedition_cat := _find_expedition_cat(game_state)
-		var label := "Expedition in progress"
+		var label := "远征进行中"
 		if expedition_cat != null:
-			label = "Expedition in progress: %s" % expedition_cat.cat_name
+			label = "远征进行中：%s" % expedition_cat.cat_name
 		_cat_option.add_item(label)
 		_cat_option.disabled = true
 		_start_button.disabled = false
 		return
 	_eligible_cats = _get_expedition_candidates(game_state)
 	if _eligible_cats.is_empty():
-		_cat_option.add_item("No expedition cat available")
+		_cat_option.add_item("当前没有可出征的猫")
 		_cat_option.disabled = true
 		_start_button.disabled = true
 		return
@@ -65,10 +65,10 @@ func _refresh_cat_options() -> void:
 func _on_start_pressed() -> void:
 	var game_state := _get_game_state()
 	if game_state == null:
-		_status_label.text = "Game state missing."
+		_status_label.text = "缺少游戏状态。"
 		return
 	if game_state.expedition_active:
-		_status_label.text = "Expedition already in progress."
+		_status_label.text = "远征已经在进行中。"
 		_generate_nodes_for_current_layer()
 		_refresh_nodes()
 		return
@@ -78,9 +78,9 @@ func _on_start_pressed() -> void:
 		_status_label.text = start_error
 		return
 	if not _system.start_expedition(game_state, cat):
-		_status_label.text = "Failed to start expedition."
+		_status_label.text = "远征开始失败。"
 		return
-	_status_label.text = "Sent %s on expedition." % cat.cat_name
+	_status_label.text = "已派遣 %s 出征。" % cat.cat_name
 	var event_bus := _get_event_bus()
 	if event_bus != null:
 		event_bus.expedition_started.emit(cat)
@@ -96,7 +96,7 @@ func _process_returned_shop() -> void:
 	if scene_manager == null or not bool(scene_manager.get("returned_from_shop")):
 		return
 	scene_manager.set("returned_from_shop", false)
-	_status_label.text = "Shop finished. Continue forward."
+	_status_label.text = "商店结束，继续前进。"
 	_generate_nodes_for_current_layer()
 
 func _process_returned_battle() -> void:
@@ -117,20 +117,20 @@ func _generate_nodes_for_current_layer() -> void:
 func _refresh_view() -> void:
 	var game_state := _get_game_state()
 	if game_state == null:
-		_layer_label.text = "Layer: -"
-		_log_text.text = "Game state missing."
+		_layer_label.text = "层数: -"
+		_log_text.text = "缺少游戏状态。"
 		_clear_nodes()
 		return
 	if not game_state.expedition_active:
-		_layer_label.text = "Layer: -"
+		_layer_label.text = "层数: -"
 		if _eligible_cats.is_empty():
-			_log_text.text = "No cat can join an expedition right now."
+			_log_text.text = "当前没有可出征的猫。"
 		else:
-			_log_text.text = "Pick one cat to start an expedition."
+			_log_text.text = "请选择一只猫开始远征。"
 		_clear_nodes()
 		return
-	_layer_label.text = "Layer: %d / %d" % [game_state.expedition_layer, GameConsts.EXPEDITION_TOTAL_LAYERS]
-	_log_text.text = "Wins: %d\nBuffs: %s\nActive genes: %d" % [
+	_layer_label.text = "层数: %d / %d" % [game_state.expedition_layer, GameConsts.EXPEDITION_TOTAL_LAYERS]
+	_log_text.text = "胜场: %d\nBuff: %s\n获得主动基因: %d" % [
 		game_state.expedition_battle_wins,
 		_expedition_buffs_text(game_state.expedition_buffs),
 		game_state.expedition_active_genes.size()
@@ -174,7 +174,7 @@ func _on_node_pressed(idx: int) -> void:
 			if scene_manager != null:
 				scene_manager.go_to_shop()
 			else:
-				_status_label.text = "Shop unavailable."
+				_status_label.text = "商店当前不可用。"
 				_advance_non_battle_layer()
 
 func _advance_non_battle_layer() -> void:
@@ -189,7 +189,7 @@ func _advance_non_battle_layer() -> void:
 
 func _finish_expedition(success: bool) -> void:
 	var reward := _system.finish_expedition(_get_game_state(), _get_event_bus(), success)
-	_status_label.text = "Expedition finished. Coins earned: %d." % reward
+	_status_label.text = "远征结束，获得金币：%d。" % reward
 	_go_to_camp()
 
 func _selected_cat() -> CatData:
@@ -227,28 +227,28 @@ func _go_to_camp() -> void:
 func _node_label(node_type: String) -> String:
 	match node_type:
 		"battle_normal":
-			return "Normal battle"
+			return "普通战斗"
 		"battle_elite":
-			return "Elite battle"
+			return "精英战斗"
 		"battle_boss":
-			return "Boss battle"
+			return "首领战斗"
 		"event_question":
-			return "Question event"
+			return "问号事件"
 		"shop":
-			return "Shop"
+			return "商店"
 		_:
-			return "Node"
+			return "节点"
 
 func _expedition_buffs_text(buffs: Array) -> String:
 	if buffs.is_empty():
-		return "None"
+		return "无"
 	var labels: PackedStringArray = []
 	for buff in buffs:
 		var buff_id := str(buff)
 		if buff_id == "hp_cap_minus_5":
-			labels.append("Max HP -5%")
+			labels.append("生命上限 -5%")
 		elif buff_id.begins_with("mystery_buff_"):
-			labels.append("Mystery buff")
+			labels.append("神秘祝福")
 		else:
 			labels.append(buff_id)
 	return ", ".join(labels)

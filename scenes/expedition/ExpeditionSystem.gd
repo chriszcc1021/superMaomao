@@ -10,11 +10,11 @@ const QUESTION_EVENT_ORDER := ["coin_bonus", "mystery_buff", "stray_kitten", "tr
 
 func can_start_expedition(game_state: Node, cat: CatData) -> String:
 	if game_state == null:
-		return "Game state missing."
+		return "缺少游戏状态。"
 	if game_state.has_method("get_expedition_block_reason"):
 		return str(game_state.get_expedition_block_reason(cat))
 	if cat == null:
-		return "No cat selected."
+		return "没有选择出征猫。"
 	return ""
 
 func start_expedition(game_state: Node, cat: CatData) -> bool:
@@ -42,7 +42,7 @@ func process_returned_battle(scene_manager: Node, game_state: Node) -> Dictionar
 		output.finished = true
 		output.success = false
 		return output
-	output.status = "Battle complete. Entering the next layer."
+	output.status = "战斗结束，进入下一层。"
 	return output
 
 func generate_nodes_for_current_layer(game_state: Node) -> Array[Dictionary]:
@@ -72,24 +72,24 @@ func resolve_question_event(game_state: Node) -> String:
 		"coin_bonus":
 			var amount := randi_range(GameConstants.EXPEDITION_QUESTION_COIN_MIN, GameConstants.EXPEDITION_QUESTION_COIN_MAX)
 			game_state.add_coins(amount)
-			return "Question event: gained %d coins." % amount
+			return "问号事件：获得 %d 金币。" % amount
 		"mystery_buff":
 			var buff := "mystery_buff_%d" % randi_range(1, GameConstants.EXPEDITION_MYSTERY_BUFF_VARIANTS)
 			game_state.add_expedition_buff(buff)
-			return "Question event: gained an expedition buff."
+			return "问号事件：获得一个远征 Buff。"
 		"stray_kitten":
-			var cat := CatFactory.create_random_stray_cat("event_stray", "Event Stray")
+			var cat := CatFactory.create_random_stray_cat("event_stray", "奇遇流浪猫")
 			if game_state.enqueue_stray_cat(cat):
-				return "Question event: a stray kitten joined the waiting queue."
-			return "Question event: the stray queue is full."
+				return "问号事件：一只流浪猫加入了等待队列。"
+			return "问号事件：流浪猫队列已满。"
 		"trouble":
 			game_state.add_expedition_buff("hp_cap_minus_5")
-			return "Question event: max HP reduced by 5% for this expedition."
+			return "问号事件：本次远征生命上限 -5%。"
 		_:
-			return "Question event: a story scene played."
+			return "问号事件：触发了一段剧情。"
 
 func resolve_shop_event() -> String:
-	return "Shop node reserved for card exchange."
+	return "商店节点。"
 
 func advance_non_battle_layer(game_state: Node) -> bool:
 	if game_state == null:
