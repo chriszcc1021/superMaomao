@@ -1,5 +1,9 @@
 extends Control
+
 const ExpeditionSystem := preload("res://scenes/expedition/ExpeditionSystem.gd")
+const GameConsts := preload("res://data/constants.gd")
+const CAMP_SCENE_PATH := "res://scenes/camp/CampScene.tscn"
+
 @onready var _cat_option: OptionButton = $Panel/VBox/SetupRow/CatOption
 @onready var _start_button: Button = $Panel/VBox/SetupRow/StartButton
 @onready var _back_button: Button = $Panel/VBox/SetupRow/BackToCampButton
@@ -9,36 +13,59 @@ const ExpeditionSystem := preload("res://scenes/expedition/ExpeditionSystem.gd")
 @onready var _log_text: RichTextLabel = $Panel/VBox/LogText
 
 var _current_nodes: Array[Dictionary] = []
+var _eligible_cats: Array[CatData] = []
 var _system := ExpeditionSystem.new()
 
 func _ready() -> void:
 	randomize()
-	_start_button.pressed.connect(_on_start_pressed)
-	_back_button.pressed.connect(_on_back_pressed)
+	if not _start_button.pressed.is_connected(_on_start_pressed):
+		_start_button.pressed.connect(_on_start_pressed)
+	if not _back_button.pressed.is_connected(_on_back_pressed):
+		_back_button.pressed.connect(_on_back_pressed)
 	_refresh_cat_options()
 	_process_returned_battle()
 	_process_returned_shop()
 	_refresh_view()
 
 func _refresh_cat_options() -> void:
+	_eligible_cats.clear()
 	_cat_option.clear()
 	var game_state := _get_game_state()
 	if game_state == null:
+		_cat_option.add_item("未找到游戏状态")
+		_cat_option.disabled = true
+		_start_button.disabled = true
 		return
-	var idx := 0
-	for cat: CatData in game_state.get_living_cats():
-		# 过滤：不可出征的状态
-		if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
-			continue
-		if cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
-			continue
-		var label := "%s，%s/%s" % [cat.cat_name, GameConstants.profession_zh(cat.profession), GameConstants.breed_zh(cat.breed)]
+	if game_state.expedition_active:
+		var expedition_cat := _find_expedition_cat(game_state)
+		var label := "远征中"
+		if expedition_cat != null:
+			label = "远征中：%s" % expedition_cat.cat_name
+		_cat_option.add_item(label)
+		_cat_option.disabled = true
+		_start_button.disabled = false
+		return
+	_eligible_cats = _get_expedition_candidates(game_state)
+	if _eligible_cats.is_empty():
+		_cat_option.add_item("暂无可出征猫咪")
+		_cat_option.disabled = true
+		_start_button.disabled = true
+		return
+	for idx in _eligible_cats.size():
+		var cat: CatData = _eligible_cats[idx]
+		var label := "%s，%s/%s" % [
+			cat.cat_name,
+			GameConsts.profession_zh(cat.profession),
+			GameConsts.breed_zh(cat.breed)
+		]
 		_cat_option.add_item(label, idx)
-		idx += 1
+	_cat_option.disabled = false
+	_start_button.disabled = false
 
 func _on_start_pressed() -> void:
 	var game_state := _get_game_state()
 	if game_state == null:
+		_status_label.text = "游戏状态缺失，请返回营地。"
 		return
 	if game_state.expedition_active:
 		_status_label.text = "远征已在进行中。"
@@ -57,19 +84,18 @@ func _on_start_pressed() -> void:
 	var event_bus := _get_event_bus()
 	if event_bus != null:
 		event_bus.expedition_started.emit(cat)
+	_refresh_cat_options()
 	_generate_nodes_for_current_layer()
 	_refresh_view()
 
 func _on_back_pressed() -> void:
-	var scene_manager := _get_scene_manager()
-	if scene_manager != null:
-		scene_manager.go_to_camp()
+	_go_to_camp()
 
 func _process_returned_shop() -> void:
-	var sm := _get_scene_manager()
-	if sm == null or not bool(sm.get("returned_from_shop")):
+	var scene_manager := _get_scene_manager()
+	if scene_manager == null or not bool(scene_manager.get("returned_from_shop")):
 		return
-	sm.set("returned_from_shop", false)
+	scene_manager.set("returned_from_shop", false)
 	_status_label.text = "商店购物完成，继续前进！"
 	_generate_nodes_for_current_layer()
 
@@ -91,13 +117,19 @@ func _generate_nodes_for_current_layer() -> void:
 func _refresh_view() -> void:
 	var game_state := _get_game_state()
 	if game_state == null:
+		_layer_label.text = "层数: -"
+		_log_text.text = "游戏状态缺失，请返回营地。"
+		_clear_nodes()
 		return
 	if not game_state.expedition_active:
 		_layer_label.text = "层数: -"
-		_log_text.text = "请选择一只猫开始远征。"
+		if _eligible_cats.is_empty():
+			_log_text.text = "暂无可出征猫咪，请先回营地准备一只成年、健康且未远征过的猫。"
+		else:
+			_log_text.text = "请选择一只猫开始远征。"
 		_clear_nodes()
 		return
-	_layer_label.text = "层数: %d / %d" % [game_state.expedition_layer, GameConstants.EXPEDITION_TOTAL_LAYERS]
+	_layer_label.text = "层数: %d / %d" % [game_state.expedition_layer, GameConsts.EXPEDITION_TOTAL_LAYERS]
 	_log_text.text = "胜场: %d\n远征Buff: %s\n获得主动基因: %d" % [
 		game_state.expedition_battle_wins,
 		_expedition_buffs_text(game_state.expedition_buffs),
@@ -109,7 +141,6 @@ func _refresh_view() -> void:
 
 func _refresh_nodes() -> void:
 	_clear_nodes()
-	# 固定二选一：最多显示2个节点按钮
 	var display_count := mini(_current_nodes.size(), 2)
 	for idx in display_count:
 		var node_data: Dictionary = _current_nodes[idx]
@@ -143,7 +174,7 @@ func _on_node_pressed(idx: int) -> void:
 			if scene_manager != null:
 				scene_manager.go_to_shop()
 			else:
-				_status_label.text = "商店暂不可用"
+				_status_label.text = "商店暂不可用。"
 				_advance_non_battle_layer()
 
 func _advance_non_battle_layer() -> void:
@@ -159,26 +190,50 @@ func _advance_non_battle_layer() -> void:
 func _finish_expedition(success: bool) -> void:
 	var reward := _system.finish_expedition(_get_game_state(), _get_event_bus(), success)
 	_status_label.text = "远征结束，获得金币：%d。" % reward
-	var scene_manager := _get_scene_manager()
-	if scene_manager != null:
-		scene_manager.go_to_camp()
+	_go_to_camp()
 
 func _selected_cat() -> CatData:
-	var game_state := _get_game_state()
+	if _eligible_cats.is_empty():
+		return null
+	var index := clampi(_cat_option.selected, 0, _eligible_cats.size() - 1)
+	return _eligible_cats[index]
+
+func _get_expedition_candidates(game_state: Node) -> Array[CatData]:
+	var candidates: Array[CatData] = []
+	if game_state == null:
+		return candidates
+	for cat: CatData in game_state.get_living_cats():
+		if cat == null:
+			continue
+		if cat.has_expeditioned:
+			continue
+		if cat.age_days < GameConsts.KITTEN_DAYS:
+			continue
+		if cat.status == GameConsts.LIFECYCLE_STATUS_EXPEDITION:
+			continue
+		if cat.status == GameConsts.LIFECYCLE_STATUS_RETIRED:
+			continue
+		if cat.status == GameConsts.LIFECYCLE_STATUS_ELDER:
+			continue
+		if cat.health != GameConsts.HEALTH_STATE_HEALTHY:
+			continue
+		candidates.append(cat)
+	return candidates
+
+func _find_expedition_cat(game_state: Node) -> CatData:
 	if game_state == null:
 		return null
-	# 与 _refresh_cat_options 保持一致的过滤条件
-	var eligible: Array[CatData] = []
-	for cat: CatData in game_state.get_living_cats():
-		if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
-			continue
-		if cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
-			continue
-		eligible.append(cat)
-	if eligible.is_empty():
-		return null
-	var index := clampi(_cat_option.selected, 0, eligible.size() - 1)
-	return eligible[index]
+	for cat: CatData in game_state.cats:
+		if cat != null and cat.id == game_state.expedition_cat_id:
+			return cat
+	return null
+
+func _go_to_camp() -> void:
+	var scene_manager := _get_scene_manager()
+	if scene_manager != null and scene_manager.has_method("go_to_camp"):
+		scene_manager.go_to_camp()
+		return
+	get_tree().change_scene_to_file(CAMP_SCENE_PATH)
 
 func _node_label(node_type: String) -> String:
 	match node_type:
@@ -194,7 +249,6 @@ func _node_label(node_type: String) -> String:
 			return "🛒 商店（换卡）"
 		_:
 			return "节点"
-
 
 func _expedition_buffs_text(buffs: Array) -> String:
 	if buffs.is_empty():

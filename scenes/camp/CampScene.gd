@@ -613,9 +613,26 @@ func _on_open_breeding_pressed() -> void:
 	_breeding_ui.visible = not _breeding_ui.visible
 
 func _on_open_expedition_pressed() -> void:
+	if _game_state == null:
+		return
+	if bool(_game_state.expedition_active):
+		var active_scene_manager: Node = get_node_or_null("/root/SceneManager")
+		if active_scene_manager != null:
+			active_scene_manager.go_to_expedition_map()
+			return
+		get_tree().change_scene_to_file("res://scenes/expedition/ExpeditionMapUI.tscn")
+		return
+	if bool(_game_state.starter_selection_pending):
+		_set_sidebar_text("请先选择第一只猫，再开始远征。")
+		return
+	if _get_expedition_candidates().is_empty():
+		_set_sidebar_text("暂无可出征猫咪。出征需要成年、健康且未远征过的猫。")
+		return
 	var scene_manager: Node = get_node_or_null("/root/SceneManager")
 	if scene_manager != null:
 		scene_manager.go_to_expedition_map()
+		return
+	get_tree().change_scene_to_file("res://scenes/expedition/ExpeditionMapUI.tscn")
 
 func _refresh_all() -> void:
 	_refresh_hud()
@@ -623,6 +640,7 @@ func _refresh_all() -> void:
 	_refresh_cat_nodes()
 	_refresh_stray_ui()
 	_refresh_starter_overlay()
+	_refresh_expedition_button()
 
 func _refresh_hud() -> void:
 	_coins_label.text = "金币: %d" % _game_state.coins
@@ -717,6 +735,36 @@ func _building_display_name(building_id: String) -> String:
 		"fortune_cat":
 			return "招财猫"
 	return building_id
+
+func _refresh_expedition_button() -> void:
+	if _open_expedition_button == null:
+		return
+	if _game_state == null:
+		_open_expedition_button.disabled = true
+		return
+	_open_expedition_button.disabled = (not bool(_game_state.expedition_active)) and (bool(_game_state.starter_selection_pending) or _get_expedition_candidates().is_empty())
+
+func _get_expedition_candidates() -> Array[CatData]:
+	var candidates: Array[CatData] = []
+	if _game_state == null:
+		return candidates
+	for cat: CatData in _game_state.get_living_cats():
+		if cat == null:
+			continue
+		if cat.has_expeditioned:
+			continue
+		if cat.age_days < GameConstants.KITTEN_DAYS:
+			continue
+		if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
+			continue
+		if cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
+			continue
+		if cat.status == GameConstants.LIFECYCLE_STATUS_ELDER:
+			continue
+		if cat.health != GameConstants.HEALTH_STATE_HEALTHY:
+			continue
+		candidates.append(cat)
+	return candidates
 
 func _build_starter_overlay() -> void:
 	if _starter_overlay != null:
