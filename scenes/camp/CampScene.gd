@@ -52,7 +52,6 @@ const STATUS_DISPLAY := {
 @onready var _accept_stray_button: Button = $UI/StrayNotification/VBox/Buttons/AcceptButton
 @onready var _reject_stray_button: Button = $UI/StrayNotification/VBox/Buttons/RejectButton
 @onready var _defer_stray_button: Button = $UI/StrayNotification/VBox/Buttons/DeferButton
-@onready var _open_breed_button: Button = $UI/SidePanel/VBox/OpenBreedingButton
 @onready var _open_expedition_button: Button = $UI/SidePanel/VBox/OpenExpeditionButton
 @onready var _breeding_ui: Control = $UI/BreedingUI
 @onready var _ui_layer: CanvasLayer = $UI
@@ -145,8 +144,6 @@ func _bind_signals() -> void:
 		_reject_stray_button.pressed.connect(_on_reject_stray_pressed)
 	if not _defer_stray_button.pressed.is_connected(_on_defer_stray_pressed):
 		_defer_stray_button.pressed.connect(_on_defer_stray_pressed)
-	if not _open_breed_button.pressed.is_connected(_on_open_breeding_pressed):
-		_open_breed_button.pressed.connect(_on_open_breeding_pressed)
 	if not _open_expedition_button.pressed.is_connected(_on_open_expedition_pressed):
 		_open_expedition_button.pressed.connect(_on_open_expedition_pressed)
 	if _game_state != null and not _game_state.coins_changed.is_connected(_on_game_coins_changed):
@@ -193,6 +190,9 @@ func _on_building_clicked(_viewport: Node, event: InputEvent, _shape_idx: int, b
 		return
 	if not _game_state.has_building(building_id):
 		_show_building_preview(building_id)
+		return
+	if building_id == "nursery":
+		_open_nursery_breeding()
 		return
 	_show_building_sidebar(building_id)
 
@@ -409,6 +409,11 @@ func _add_upgrade_buttons(building_id: String) -> void:
 					can_afford
 				)
 		"nursery":
+			_add_action_button(
+				"Open Breeding",
+				_open_nursery_breeding,
+				true
+			)
 			var n_slots: int = _game_state.max_breeding_slots
 			if n_slots < GameConstants.BREEDING_SLOT_MAX:
 				var upgrade_cost: int = int(GameConstants.BREEDING_SLOT_UPGRADE_COSTS[n_slots - 1])
@@ -520,6 +525,17 @@ func _set_sidebar_text(text: String) -> void:
 	if _cat_list_text != null:
 		_cat_list_text.text = text
 
+func _open_nursery_breeding() -> void:
+	_show_building_sidebar("nursery")
+	if _breeding_ui == null:
+		return
+	if _breeding_ui.has_method("open_for_building"):
+		_breeding_ui.call("open_for_building")
+		return
+	_breeding_ui.visible = true
+	if _breeding_ui.has_method("refresh"):
+		_breeding_ui.call("refresh")
+
 func _on_cat_drop_requested(cat: CatData, world_pos: Vector2) -> void:
 	var nearest_id: String = ""
 	var nearest_dist: float = 70.0
@@ -550,6 +566,15 @@ func _on_cat_drop_requested(cat: CatData, world_pos: Vector2) -> void:
 		_refresh_cat_nodes()
 		return
 
+	if _game_state.has_method("is_cat_breeding") and _game_state.is_cat_breeding(cat):
+		if nearest_id != "nursery":
+			_set_sidebar_text("Breeding cats must stay in the nursery.")
+			_refresh_cat_nodes()
+			return
+		_open_nursery_breeding()
+		_refresh_cat_nodes()
+		return
+
 	if nearest_id.is_empty():
 		cat.assigned_building = ""
 		_refresh_cat_nodes()
@@ -575,6 +600,8 @@ func _on_cat_drop_requested(cat: CatData, world_pos: Vector2) -> void:
 		return
 
 	cat.assigned_building = nearest_id
+	if nearest_id == "nursery":
+		_open_nursery_breeding()
 	_refresh_cat_nodes()
 
 func _get_building_worker_cap(building_id: String) -> int:
@@ -608,9 +635,6 @@ func _on_reject_stray_pressed() -> void:
 
 func _on_defer_stray_pressed() -> void:
 	_refresh_stray_ui()
-
-func _on_open_breeding_pressed() -> void:
-	_breeding_ui.visible = not _breeding_ui.visible
 
 func _on_open_expedition_pressed() -> void:
 	if _game_state == null:
@@ -668,7 +692,7 @@ func _refresh_cat_list() -> void:
 				GameConstants.profession_zh(cat.profession),
 				GameConstants.breed_zh(cat.breed),
 				cat.age_days,
-				_status_zh(cat.status),
+				_cat_runtime_status_text(cat),
 				health_tag,
 				dead_tag,
 			]
@@ -711,6 +735,12 @@ func _on_breeding_success(child: CatData) -> void:
 	if _breeding_ui.has_method("refresh"):
 		_breeding_ui.call("refresh")
 
+func _cat_runtime_status_text(cat: CatData) -> String:
+	var status_text := _status_zh(cat.status)
+	if _game_state != null and _game_state.has_method("is_cat_breeding") and _game_state.is_cat_breeding(cat):
+		status_text += " / BREEDING"
+	return status_text
+
 func _status_zh(status_id: String) -> String:
 	return str(STATUS_DISPLAY.get(status_id, status_id))
 
@@ -745,25 +775,14 @@ func _refresh_expedition_button() -> void:
 	_open_expedition_button.disabled = (not bool(_game_state.expedition_active)) and (bool(_game_state.starter_selection_pending) or _get_expedition_candidates().is_empty())
 
 func _get_expedition_candidates() -> Array[CatData]:
-	var candidates: Array[CatData] = []
 	if _game_state == null:
-		return candidates
+		return []
+	if _game_state.has_method("get_expedition_candidates"):
+		return _game_state.get_expedition_candidates()
+	var candidates: Array[CatData] = []
 	for cat: CatData in _game_state.get_living_cats():
-		if cat == null:
-			continue
-		if cat.has_expeditioned:
-			continue
-		if cat.age_days < GameConstants.KITTEN_DAYS:
-			continue
-		if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
-			continue
-		if cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
-			continue
-		if cat.status == GameConstants.LIFECYCLE_STATUS_ELDER:
-			continue
-		if cat.health != GameConstants.HEALTH_STATE_HEALTHY:
-			continue
-		candidates.append(cat)
+		if cat != null and cat.health == GameConstants.HEALTH_STATE_HEALTHY:
+			candidates.append(cat)
 	return candidates
 
 func _build_starter_overlay() -> void:

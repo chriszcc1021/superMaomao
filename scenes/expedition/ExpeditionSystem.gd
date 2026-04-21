@@ -1,24 +1,20 @@
 class_name ExpeditionSystem
 extends RefCounted
 
-const CatData       := preload("res://resources/CatData.gd")
+const CatData := preload("res://resources/CatData.gd")
 const GameConstants := preload("res://data/constants.gd")
-const CatFactory    := preload("res://data/cat_factory.gd")
+const CatFactory := preload("res://data/cat_factory.gd")
 
 const NODE_PICK_ORDER := ["battle_normal", "battle_elite", "event_question", "shop"]
 const QUESTION_EVENT_ORDER := ["coin_bonus", "mystery_buff", "stray_kitten", "trouble", "story"]
 
-func can_start_expedition(cat: CatData) -> String:
+func can_start_expedition(game_state: Node, cat: CatData) -> String:
+	if game_state == null:
+		return "Game state missing."
+	if game_state.has_method("get_expedition_block_reason"):
+		return str(game_state.get_expedition_block_reason(cat))
 	if cat == null:
-		return "没有可出征的猫咪。"
-	if cat.has_expeditioned:
-		return "该猫已完成过一次远征。"
-	if cat.age_days < GameConstants.KITTEN_DAYS:
-		return "幼猫不能出征。"
-	if cat.status == GameConstants.LIFECYCLE_STATUS_ELDER:
-		return "老年猫不能出征。"
-	if cat.health != GameConstants.HEALTH_STATE_HEALTHY:
-		return "仅健康状态可出征。"
+		return "No cat selected."
 	return ""
 
 func start_expedition(game_state: Node, cat: CatData) -> bool:
@@ -46,7 +42,7 @@ func process_returned_battle(scene_manager: Node, game_state: Node) -> Dictionar
 		output.finished = true
 		output.success = false
 		return output
-	output.status = "战斗结束，进入下一层。"
+	output.status = "Battle complete. Entering the next layer."
 	return output
 
 func generate_nodes_for_current_layer(game_state: Node) -> Array[Dictionary]:
@@ -57,11 +53,9 @@ func generate_nodes_for_current_layer(game_state: Node) -> Array[Dictionary]:
 	if layer >= GameConstants.EXPEDITION_BOSS_LAYER:
 		nodes.append({"type": "battle_boss"})
 		return nodes
-	# 固定生成2个节点，玩家二选一
 	var probs: Dictionary = GameConstants.EXPEDITION_NODE_PROBABILITIES.get(layer, {})
 	while nodes.size() < 2:
 		var picked: String = _weighted_pick(probs, NODE_PICK_ORDER, "battle_normal")
-		# 避免两个节点完全相同（至少尝试差异化，最多3次）
 		if nodes.size() == 1 and str(nodes[0].get("type", "")) == picked:
 			var attempts := 0
 			while attempts < 3 and str(nodes[0].get("type", "")) == picked:
@@ -78,24 +72,24 @@ func resolve_question_event(game_state: Node) -> String:
 		"coin_bonus":
 			var amount := randi_range(GameConstants.EXPEDITION_QUESTION_COIN_MIN, GameConstants.EXPEDITION_QUESTION_COIN_MAX)
 			game_state.add_coins(amount)
-			return "问号事件：获得 %d 金币。" % amount
+			return "Question event: gained %d coins." % amount
 		"mystery_buff":
 			var buff := "mystery_buff_%d" % randi_range(1, GameConstants.EXPEDITION_MYSTERY_BUFF_VARIANTS)
 			game_state.add_expedition_buff(buff)
-			return "问号事件：获得一个远征增益。"
+			return "Question event: gained an expedition buff."
 		"stray_kitten":
-			var cat := CatFactory.create_random_stray_cat("event_stray", "奇遇猫")
+			var cat := CatFactory.create_random_stray_cat("event_stray", "Event Stray")
 			if game_state.enqueue_stray_cat(cat):
-				return "问号事件：发现流浪幼崽，已加入等待队列。"
-			return "问号事件：流浪猫队列已满。"
+				return "Question event: a stray kitten joined the waiting queue."
+			return "Question event: the stray queue is full."
 		"trouble":
 			game_state.add_expedition_buff("hp_cap_minus_5")
-			return "问号事件：本次远征生命上限-5%。"
+			return "Question event: max HP reduced by 5% for this expedition."
 		_:
-			return "问号事件：遭遇剧情事件。"
+			return "Question event: a story scene played."
 
 func resolve_shop_event() -> String:
-	return "商店节点：换卡功能预留（下一轮细化）。"
+	return "Shop node reserved for card exchange."
 
 func advance_non_battle_layer(game_state: Node) -> bool:
 	if game_state == null:
@@ -113,7 +107,8 @@ func finish_expedition(game_state: Node, event_bus: Node, success: bool) -> int:
 	if cat != null:
 		_write_active_genes(cat, game_state.expedition_active_genes)
 		cat.has_expeditioned = true
-		cat.status = GameConstants.LIFECYCLE_STATUS_RETIRED  # 远征后退休，不可再出征
+		if cat.status != GameConstants.LIFECYCLE_STATUS_DEAD:
+			cat.status = GameConstants.LIFECYCLE_STATUS_IDLE
 	game_state.clear_expedition_state()
 	if event_bus != null:
 		event_bus.expedition_ended.emit(success, reward)
@@ -121,7 +116,7 @@ func finish_expedition(game_state: Node, event_bus: Node, success: bool) -> int:
 
 func _find_expedition_cat(game_state: Node) -> CatData:
 	for cat: CatData in game_state.cats:
-		if cat.id == game_state.expedition_cat_id:
+		if cat != null and cat.id == game_state.expedition_cat_id:
 			return cat
 	return null
 

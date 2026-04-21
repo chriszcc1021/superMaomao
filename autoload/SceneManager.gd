@@ -10,17 +10,17 @@ var last_battle_result: Dictionary = {}
 var returned_from_shop: bool = false
 
 func go_to_camp() -> void:
-	get_tree().change_scene_to_file(CAMP_SCENE_PATH)
+	get_tree().call_deferred("change_scene_to_file", CAMP_SCENE_PATH)
 
 func go_to_expedition_map() -> void:
-	get_tree().change_scene_to_file(EXPEDITION_MAP_SCENE_PATH)
+	get_tree().call_deferred("change_scene_to_file", EXPEDITION_MAP_SCENE_PATH)
 
 func go_to_shop() -> void:
-	get_tree().change_scene_to_file(SHOP_SCENE_PATH)
+	get_tree().call_deferred("change_scene_to_file", SHOP_SCENE_PATH)
 
 func go_to_battle(node_type: String) -> void:
 	last_battle_node_type = node_type
-	get_tree().change_scene_to_file(BATTLE_SCENE_PATH)
+	get_tree().call_deferred("change_scene_to_file", BATTLE_SCENE_PATH)
 
 func return_from_battle(result: Dictionary) -> void:
 	last_battle_result = result.duplicate(true)

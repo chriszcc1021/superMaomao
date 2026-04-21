@@ -189,6 +189,8 @@ func get_living_cats() -> Array[CatData]:
 			continue
 		if cat.status == GameConstants.LIFECYCLE_STATUS_DEAD:
 			continue
+		if cat.status == GameConstants.LIFECYCLE_STATUS_BURIED:
+			continue
 		living.append(cat)
 	return living
 
@@ -235,8 +237,71 @@ func get_building_level(building_id: String) -> int:
 		return 1
 	return 0
 
+func is_cat_breeding(cat: CatData) -> bool:
+	if cat == null or cat.id.is_empty():
+		return false
+	for slot in breeding_slots:
+		if not bool(slot.get("active", false)):
+			continue
+		if str(slot.get("father_id", "")) == cat.id:
+			return true
+		if str(slot.get("mother_id", "")) == cat.id:
+			return true
+	return false
+
+func can_cat_breed(cat: CatData) -> bool:
+	if cat == null:
+		return false
+	if cat.age_days < GameConstants.KITTEN_DAYS:
+		return false
+	if not cat.can_breed():
+		return false
+	if cat.health != GameConstants.HEALTH_STATE_HEALTHY:
+		return false
+	if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
+		return false
+	if cat.status == GameConstants.LIFECYCLE_STATUS_BURIED:
+		return false
+	if is_cat_breeding(cat):
+		return false
+	return true
+
+func get_breedable_cats() -> Array[CatData]:
+	var result: Array[CatData] = []
+	for cat: CatData in cats:
+		if can_cat_breed(cat):
+			result.append(cat)
+	return result
+
+func get_expedition_block_reason(cat: CatData) -> String:
+	if cat == null:
+		return "No cat selected."
+	if cat.status == GameConstants.LIFECYCLE_STATUS_DEAD:
+		return "Dead cats cannot join expeditions."
+	if cat.status == GameConstants.LIFECYCLE_STATUS_BURIED:
+		return "This cat is no longer available."
+	if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
+		return "This cat is already on expedition."
+	if cat.health != GameConstants.HEALTH_STATE_HEALTHY:
+		return "Only healthy cats can join expeditions."
+	if is_cat_breeding(cat):
+		return "Breeding cats cannot join expeditions."
+	return ""
+
+func can_cat_join_expedition(cat: CatData) -> bool:
+	return get_expedition_block_reason(cat).is_empty()
+
+func get_expedition_candidates() -> Array[CatData]:
+	var result: Array[CatData] = []
+	for cat: CatData in get_living_cats():
+		if can_cat_join_expedition(cat):
+			result.append(cat)
+	return result
+
 func start_expedition(cat: CatData) -> bool:
 	if cat == null or expedition_active:
+		return false
+	if not can_cat_join_expedition(cat):
 		return false
 	expedition_active = true
 	expedition_cat_id = cat.id
@@ -366,6 +431,11 @@ func _init_breeding_slots() -> void:
 	while breeding_slots.size() < max_breeding_slots:
 		breeding_slots.append({"active": false, "father_id": "", "mother_id": "", "days_remaining": 0})
 
+func sync_breeding_slots() -> void:
+	if breeding_slots.size() > max_breeding_slots:
+		breeding_slots.resize(max_breeding_slots)
+	_init_breeding_slots()
+
 func get_breeding_slot(index: int) -> Dictionary:
 	if index < 0 or index >= breeding_slots.size():
 		return {}
@@ -387,6 +457,8 @@ func start_breeding_in_slot(slot_idx: int, father_id: String, mother_id: String,
 	var mother := find_cat(mother_id)
 	if father == null or mother == null:
 		return false
+	if not can_cat_breed(father) or not can_cat_breed(mother):
+		return false
 	if father.sex != GameConstants.SEX_MALE or mother.sex != GameConstants.SEX_FEMALE:
 		return false
 	# 成功率检定
@@ -403,6 +475,8 @@ func start_breeding_in_slot(slot_idx: int, father_id: String, mother_id: String,
 	slot["days_remaining"] = GameConstants.BREEDING_SLOT_CD_DAYS
 	father.breed_count += 1
 	mother.breed_count += 1
+	father.assigned_building = "nursery"
+	mother.assigned_building = "nursery"
 	return true
 
 ## DayManager 每天调用，推进所有坑位倒计时，返回本天出生的猫列表

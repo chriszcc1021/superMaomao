@@ -99,7 +99,7 @@ func _save_game() -> void:
 	if game_state == null:
 		return
 	var data := {
-		"save_version": 2,
+		"save_version": 3,
 		"time_of_day": time_of_day,
 		"total_days": total_days,
 		"coins": game_state.coins,
@@ -107,7 +107,9 @@ func _save_game() -> void:
 		"cat_food_cap": game_state.cat_food_cap,
 		"camp_day": game_state.camp_day,
 		"cat_house_slots": game_state.cat_house_slots,
+		"max_breeding_slots": game_state.max_breeding_slots,
 		"buildings_built": game_state.buildings_built,
+		"breeding_slots": _serialize_breeding_slots(game_state.breeding_slots),
 		"cats": _serialize_cats(game_state.cats),
 		"starter_selection_pending": bool(game_state.starter_selection_pending),
 		"starter_candidates": _serialize_cats(game_state.starter_candidates),
@@ -159,8 +161,13 @@ func _try_load_save() -> void:
 	game_state.cat_food_cap = int(data.get("cat_food_cap", game_state.cat_food_cap))
 	game_state.camp_day = int(data.get("camp_day", game_state.camp_day))
 	game_state.cat_house_slots = int(data.get("cat_house_slots", game_state.cat_house_slots))
+	game_state.max_breeding_slots = int(data.get("max_breeding_slots", game_state.max_breeding_slots))
 	if data.has("buildings_built"):
 		game_state.buildings_built = data["buildings_built"]
+	if data.has("breeding_slots"):
+		game_state.breeding_slots = _deserialize_breeding_slots(data["breeding_slots"])
+	if game_state.has_method("sync_breeding_slots"):
+		game_state.sync_breeding_slots()
 	game_state.cats = _deserialize_cats(data.get("cats", []))
 	game_state.starter_selection_pending = bool(data.get("starter_selection_pending", game_state.cats.is_empty()))
 	game_state.starter_candidates = _deserialize_cats(data.get("starter_candidates", []))
@@ -220,12 +227,42 @@ func _serialize_cat(cat: CatData) -> Dictionary:
 		"gene_slot_3": cat.gene_slot_3,
 	}
 
+func _serialize_breeding_slots(slots: Array) -> Array:
+	var result: Array = []
+	for slot in slots:
+		if not (slot is Dictionary):
+			continue
+		result.append({
+			"active": bool(slot.get("active", false)),
+			"father_id": str(slot.get("father_id", "")),
+			"mother_id": str(slot.get("mother_id", "")),
+			"child_breed": str(slot.get("child_breed", "")),
+			"child_profession": str(slot.get("child_profession", "")),
+			"days_remaining": int(slot.get("days_remaining", 0)),
+		})
+	return result
+
 func _deserialize_cats(cats_data: Array) -> Array[CatData]:
 	var result: Array[CatData] = []
 	for entry in cats_data:
 		if not (entry is Dictionary):
 			continue
 		result.append(_deserialize_cat(entry))
+	return result
+
+func _deserialize_breeding_slots(slots_data: Array) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for entry in slots_data:
+		if not (entry is Dictionary):
+			continue
+		result.append({
+			"active": bool(entry.get("active", false)),
+			"father_id": str(entry.get("father_id", "")),
+			"mother_id": str(entry.get("mother_id", "")),
+			"child_breed": str(entry.get("child_breed", "")),
+			"child_profession": str(entry.get("child_profession", "")),
+			"days_remaining": int(entry.get("days_remaining", 0)),
+		})
 	return result
 
 func _deserialize_cat(data: Dictionary) -> CatData:

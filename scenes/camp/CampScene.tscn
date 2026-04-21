@@ -33,13 +33,9 @@ offset_bottom = 72.0
 [node name="VBox" type="VBoxContainer" parent="UI/SidePanel"]
 layout_mode = 2
 
-[node name="OpenBreedingButton" type="Button" parent="UI/SidePanel/VBox"]
-layout_mode = 2
-text = "繁育"
-
 [node name="OpenExpeditionButton" type="Button" parent="UI/SidePanel/VBox"]
 layout_mode = 2
-text = "远征"
+text = "杩滃緛"
 
 [node name="CatListUI" parent="UI" instance=ExtResource("3")]
 
@@ -54,21 +50,21 @@ layout_mode = 2
 
 [node name="StrayLabel" type="Label" parent="UI/StrayNotification/VBox"]
 layout_mode = 2
-text = "暂无流浪猫。"
+text = "鏆傛棤娴佹氮鐚€?"
 
 [node name="Buttons" type="HBoxContainer" parent="UI/StrayNotification/VBox"]
 layout_mode = 2
 
 [node name="AcceptButton" type="Button" parent="UI/StrayNotification/VBox/Buttons"]
 layout_mode = 2
-text = "接收"
+text = "鎺ユ敹"
 
 [node name="RejectButton" type="Button" parent="UI/StrayNotification/VBox/Buttons"]
 layout_mode = 2
-text = "拒绝"
+text = "鎷掔粷"
 
 [node name="DeferButton" type="Button" parent="UI/StrayNotification/VBox/Buttons"]
 layout_mode = 2
-text = "暂缓1天"
+text = "鏆傜紦1澶?"
 
 [node name="BreedingUI" parent="UI" instance=ExtResource("4")]
