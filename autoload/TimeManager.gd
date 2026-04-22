@@ -22,6 +22,18 @@ var time_paused: bool = false
 var expedition_days_elapsed: float = 0.0
 var in_expedition: bool = false
 
+# 时间速率：1× / 2× / 5× / 10×
+var time_speed: float = 1.0
+const SPEED_OPTIONS: Array[float] = [1.0, 2.0, 5.0, 10.0]
+
+## 循环切换速率，返回新速率
+func cycle_speed() -> float:
+	var idx := SPEED_OPTIONS.find(time_speed)
+	if idx < 0:
+		idx = 0
+	time_speed = SPEED_OPTIONS[(idx + 1) % SPEED_OPTIONS.size()]
+	return time_speed
+
 var _day_manager: RefCounted = null
 
 func _ready() -> void:
@@ -40,14 +52,15 @@ func _process(delta: float) -> void:
 			return
 
 	var prev_time := time_of_day
-	time_of_day += effective_delta / DAY_DURATION_SEC
+	time_of_day += effective_delta * time_speed / DAY_DURATION_SEC
 	_check_day_night_boundary(prev_time, time_of_day)
 
 	if time_of_day >= 1.0:
 		time_of_day -= 1.0
 		total_days += 1
-		day_boundary_crossed.emit()
+		# 先执行日结算，再通知 UI（避免 UI 刷新到旧数据）
 		_trigger_day_production()
+		day_boundary_crossed.emit()
 
 func _check_day_night_boundary(prev: float, curr: float) -> void:
 	if prev < DAY_FRACTION and curr >= DAY_FRACTION:

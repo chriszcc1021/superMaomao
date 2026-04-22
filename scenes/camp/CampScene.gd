@@ -61,6 +61,7 @@ var _is_night: bool = false
 var _game_state: Node = null
 var _event_bus: Node = null
 var _day_manager: RefCounted = DayManagerScript.new()
+var _speed_btn: Button = null  # 动态创建的速度切换按钮
 
 var _starter_overlay: Control = null
 var _starter_hint_label: Label = null
@@ -89,7 +90,8 @@ func _ready() -> void:
 	_refresh_starter_overlay()
 	_refresh_all()
 	if _next_day_button != null:
-		_next_day_button.visible = false
+		_next_day_button.visible = true
+	_create_speed_button()
 
 func _process(_delta: float) -> void:
 	_refresh_time_label()
@@ -116,7 +118,10 @@ func _on_day_started() -> void:
 	_refresh_hud()
 
 func _on_day_boundary_crossed() -> void:
+	# advance_day 已在 TimeManager 里执行完毕，直接刷新 UI
 	_refresh_all()
+	# 简短自动通知，不覆盖玩家正在查看的 sidebar
+	_show_toast("📅 第%d天开始" % _game_state.camp_day)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _starter_overlay != null and _starter_overlay.visible:
@@ -616,8 +621,9 @@ func _get_building_worker_cap(building_id: String) -> int:
 	return 999
 
 func _on_next_day_pressed() -> void:
-	_day_manager.advance_day(_game_state, _event_bus)
+	var summary := _run_day_advance()
 	_refresh_all()
+	_set_sidebar_text(summary)
 
 func _on_accept_stray_pressed() -> void:
 	if _game_state.stray_cat_queue.is_empty():
@@ -940,3 +946,91 @@ func _on_starter_choice_pressed(index: int) -> void:
 			GameConstants.sex_display(_game_state.intro_stray_target_sex),
 		]
 	)
+
+# ── 日结算（手动推进）：快照 → advance_day → 对比 → 返回事件日志 ──────────────
+func _run_day_advance() -> String:
+	if _game_state == null:
+		return ""
+	# 快照
+	var snap_coins: int = _game_state.coins
+	var snap_food: int = _game_state.cat_food
+	var snap_queue: int = _game_state.stray_cat_queue.size()
+	var snap_cat_ids: Dictionary = {}  # id → true，用于检测新生猫
+	var snap_health: Dictionary = {}
+	var snap_status: Dictionary = {}
+	for cat in _game_state.cats:
+		if cat == null:
+			continue
+		snap_cat_ids[cat.id] = true
+		snap_health[cat.id] = cat.health
+		snap_status[cat.id] = cat.status
+
+	# 执行结算
+	_day_manager.advance_day(_game_state, _event_bus)
+
+	# 对比生成事件列表
+	var events: Array[String] = []
+	var food_delta: int = _game_state.cat_food - snap_food
+	var coins_delta: int = _game_state.coins - snap_coins
+
+	if food_delta > 0:
+		events.append("🌾 猫粮 +%d → %d/%d" % [food_delta, _game_state.cat_food, _game_state.cat_food_cap])
+	elif _game_state.cat_food == 0 and snap_food > 0:
+		events.append("⚠️ 猫粮耗尽！猫咪开始生病")
+	else:
+		events.append("🍽️ 猫粮 %d → %d/%d" % [snap_food, _game_state.cat_food, _game_state.cat_food_cap])
+
+	if coins_delta > 0:
+		events.append("💰 金币 +%d → %d" % [coins_delta, _game_state.coins])
+
+	for cat in _game_state.cats:
+		if cat == null:
+			continue
+		# 新生猫
+		if not snap_cat_ids.has(cat.id):
+			events.append("🐣 %s 出生了！" % cat.cat_name)
+			continue
+		var old_h: String = str(snap_health.get(cat.id, GameConstants.HEALTH_STATE_HEALTHY))
+		var old_s: String = str(snap_status.get(cat.id, GameConstants.LIFECYCLE_STATUS_IDLE))
+		if old_h == GameConstants.HEALTH_STATE_HEALTHY and cat.health == GameConstants.HEALTH_STATE_SICK:
+			events.append("🤒 %s 生病了！" % cat.cat_name)
+		elif old_h == GameConstants.HEALTH_STATE_SICK and cat.health == GameConstants.HEALTH_STATE_CRITICAL:
+			events.append("🆘 %s 病危！需要送医" % cat.cat_name)
+		if old_s != GameConstants.LIFECYCLE_STATUS_ELDER and cat.status == GameConstants.LIFECYCLE_STATUS_ELDER:
+			events.append("👴 %s 步入老年期" % cat.cat_name)
+		if old_s != GameConstants.LIFECYCLE_STATUS_DEAD and cat.status == GameConstants.LIFECYCLE_STATUS_DEAD:
+			events.append("💀 %s 离世了" % cat.cat_name)
+
+	if _game_state.stray_cat_queue.size() > snap_queue:
+		events.append("🐱 有流浪猫到访！")
+
+	var day: int = _game_state.camp_day
+	var header := "─── 第%d天 结算 ───" % day
+	var body := "\n".join(events) if not events.is_empty() else "一切平静。"
+	return "%s\n%s" % [header, body]
+
+# ── 速度切换按钮（动态创建，加在 NextDayButton 旁边）────────────────────────
+func _create_speed_button() -> void:
+	if _time_manager == null:
+		return
+	var hbox: HBoxContainer = get_node_or_null("UI/CampHUD/HBox")
+	if hbox == null:
+		return
+	var btn := Button.new()
+	btn.text = "1×"
+	btn.custom_minimum_size = Vector2(48, 0)
+	btn.tooltip_text = "切换时间速率 (1×/2×/5×/10×)"
+	btn.pressed.connect(func() -> void:
+		var new_speed: float = _time_manager.cycle_speed()
+		btn.text = "%g×" % new_speed
+	)
+	hbox.add_child(btn)
+	_speed_btn = btn
+
+# ── 轻量提示（status_label 短暂显示，不覆盖 sidebar）────────────────────────
+func _show_toast(text: String) -> void:
+	# 用 stray_label 同一套时间后消失的逻辑实在麻烦，
+	# 暂时只在 day_label 区域旁打印一个 1 秒闪过的 Label
+	# 简单实现：直接更新 _cat_list_text 的最后一行（如果当前没在看 sidebar）
+	# TODO: 如果后续要做 Toast 系统可单独提取
+	pass  # auto day advance 只静默刷新 HUD，不抢占 sidebar
