@@ -563,6 +563,8 @@ func _refresh_hud() -> void:
 	else:
 		for card: CardData in _cards:
 			cards_text += "- %s x%d\n" % [card.card_name, card.stack_count]
+	if _player_cat != null and _player_cat.has_method("set_xp_progress"):
+		_player_cat.call("set_xp_progress", _fish, _xp_to_next)
 	_hud.update_stats(
 		_player_cat.current_hp,
 		_player_cat.max_hp,

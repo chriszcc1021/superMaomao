@@ -347,6 +347,16 @@ const BATTLE_WEAPON_STACK_BONUS := 0.20
 const BATTLE_WEAPON_SPREAD_DEGREES := 6.0
 const BATTLE_ENEMY_MELEE_RANGE := 20.0
 const BATTLE_ENEMY_MELEE_INTERVAL := 0.8
+const BATTLE_PLAYER_HIT_DAMAGE := 1.0
+const BATTLE_PLAYER_HIT_IFRAME_SEC := 1.0
+const BATTLE_PLAYER_HP_BY_BREED := {
+	"tabby": 4.0,
+	"ragdoll": 5.0,
+	"siamese": 3.0,
+	"orange": 5.0,
+	"black": 3.0,
+	"british": 5.0,
+}
 const BATTLE_SPAWN_CD_NORMAL_INITIAL := 3.5
 const BATTLE_SPAWN_CD_NORMAL_MIN := 2.8
 const BATTLE_SPAWN_CD_NORMAL_MAX := 4.2

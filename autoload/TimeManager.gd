@@ -14,6 +14,7 @@ const SAVE_PATH := "user://save.json"
 signal day_started
 signal night_started
 signal day_boundary_crossed
+signal resource_generated(building_id: String, resource_type: String, amount: int)
 
 var time_of_day: float = 0.0
 var total_days: int = 0
@@ -21,6 +22,11 @@ var is_daytime: bool = true
 var time_paused: bool = false
 var expedition_days_elapsed: float = 0.0
 var in_expedition: bool = false
+var resource_progress: Dictionary = {
+	"food_farm": 0.0,
+	"gold_mine": 0.0,
+	"fortune_cat": 0.0,
+}
 
 # 时间速率：1× / 2× / 5× / 10×
 var time_speed: float = 1.0
@@ -52,7 +58,9 @@ func _process(delta: float) -> void:
 			return
 
 	var prev_time := time_of_day
-	time_of_day += effective_delta * time_speed / DAY_DURATION_SEC
+	var day_delta := effective_delta * time_speed / DAY_DURATION_SEC
+	_tick_continuous_resources(day_delta)
+	time_of_day += day_delta
 	_check_day_night_boundary(prev_time, time_of_day)
 
 	if time_of_day >= 1.0:
@@ -100,6 +108,45 @@ func get_time_label() -> String:
 		return "🌙 夜晚"
 	return "⭐ 深夜"
 
+func _tick_continuous_resources(day_delta: float) -> void:
+	if day_delta <= 0.0:
+		return
+	var game_state := _get_game_state()
+	if game_state == null or _day_manager == null:
+		return
+	if not _day_manager.has_method("get_continuous_resource_rates"):
+		return
+
+	var rates: Dictionary = _day_manager.get_continuous_resource_rates(game_state)
+	for building_id in ["food_farm", "gold_mine", "fortune_cat"]:
+		var rate_per_day := float(rates.get(building_id, 0))
+		if rate_per_day <= 0.0:
+			continue
+		if building_id == "food_farm" and game_state.cat_food >= game_state.cat_food_cap:
+			resource_progress[building_id] = minf(float(resource_progress.get(building_id, 0.0)), 0.999)
+			continue
+
+		resource_progress[building_id] = float(resource_progress.get(building_id, 0.0)) + rate_per_day * day_delta
+		var produced_units := int(floor(float(resource_progress.get(building_id, 0.0))))
+		if produced_units <= 0:
+			continue
+		resource_progress[building_id] = float(resource_progress.get(building_id, 0.0)) - produced_units
+		_apply_continuous_resource_gain(game_state, building_id, produced_units)
+
+func _apply_continuous_resource_gain(game_state: Node, building_id: String, amount: int) -> void:
+	if amount <= 0 or game_state == null:
+		return
+	match building_id:
+		"food_farm":
+			var before_food: int = game_state.cat_food
+			game_state.add_cat_food(amount)
+			var actual_food: int = game_state.cat_food - before_food
+			if actual_food > 0:
+				resource_generated.emit(building_id, "food", actual_food)
+		"gold_mine", "fortune_cat":
+			game_state.add_coins(amount)
+			resource_generated.emit(building_id, "coins", amount)
+
 func _trigger_day_production() -> void:
 	var game_state := _get_game_state()
 	if game_state == null:
@@ -115,6 +162,7 @@ func _save_game() -> void:
 		"save_version": 3,
 		"time_of_day": time_of_day,
 		"total_days": total_days,
+		"resource_progress": resource_progress,
 		"coins": game_state.coins,
 		"cat_food": game_state.cat_food,
 		"cat_food_cap": game_state.cat_food_cap,
@@ -168,6 +216,9 @@ func _try_load_save() -> void:
 	time_of_day = float(data.get("time_of_day", 0.0))
 	total_days = int(data.get("total_days", 0))
 	is_daytime = time_of_day < DAY_FRACTION
+	if data.has("resource_progress") and data["resource_progress"] is Dictionary:
+		for building_id in resource_progress.keys():
+			resource_progress[building_id] = float(data["resource_progress"].get(building_id, resource_progress[building_id]))
 
 	game_state.coins = int(data.get("coins", game_state.coins))
 	game_state.cat_food = int(data.get("cat_food", game_state.cat_food))

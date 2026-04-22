@@ -4,6 +4,9 @@ extends Node2D
 const CatData       := preload("res://resources/CatData.gd")
 const GameConstants := preload("res://data/constants.gd")
 
+const INVALID_BUILDING_ANCHOR := Vector2(-9999, -9999)
+const DRAG_START_DISTANCE := 10.0
+
 
 @export var auto_wander: bool = true
 @export var wander_rect: Rect2 = Rect2(Vector2(120.0, 110.0), Vector2(900.0, 500.0))
@@ -15,13 +18,15 @@ var _target_position: Vector2 = Vector2.ZERO
 var _move_speed: float = 65.0
 var _elapsed: float = 0.0
 var _anim_state: String = "wander"
-var _building_anchor: Vector2 = Vector2(-9999, -9999)
+var _building_anchor: Vector2 = INVALID_BUILDING_ANCHOR
 var _at_anchor: bool = false
 var _food_drop_timer: float = 0.0
 var _food_particles: Array = []
 
 # 拖拽状态
 var _dragging: bool = false
+var _pressing_on_cat: bool = false
+var _press_position: Vector2 = Vector2.ZERO
 # 防止 _pick_new_target await 被重复调用
 var _waiting_for_target: bool = false
 
@@ -48,23 +53,40 @@ func set_building_anchor(building_id: String, world_pos: Vector2) -> void:
 	_at_anchor = false
 	_update_anim_state()
 
+func clear_building_anchor() -> void:
+	_building_anchor = INVALID_BUILDING_ANCHOR
+	_at_anchor = false
+
+func has_building_anchor() -> bool:
+	return _building_anchor.x > -999.0
+
+func get_building_anchor() -> Vector2:
+	return _building_anchor
+
 func _unhandled_input(event: InputEvent) -> void:
-	if not (event is InputEventMouseButton):
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if mb.pressed:
+			var local_pos := to_local(get_global_mouse_position())
+			if local_pos.length() <= 18.0:
+				_pressing_on_cat = true
+				_press_position = get_global_mouse_position()
+				get_viewport().set_input_as_handled()
+		else:
+			_pressing_on_cat = false
+			if _dragging:
+				_dragging = false
+				drop_requested.emit(cat_data, get_global_mouse_position())
+				get_viewport().set_input_as_handled()
 		return
-	var mb := event as InputEventMouseButton
-	if mb.button_index != MOUSE_BUTTON_LEFT:
-		return
-	if mb.pressed:
-		var local_pos := to_local(get_global_mouse_position())
-		if local_pos.length() <= 18.0 and not _dragging:
+	if event is InputEventMouseMotion and _pressing_on_cat and not _dragging:
+		var mouse_pos := get_global_mouse_position()
+		if _press_position.distance_to(mouse_pos) >= DRAG_START_DISTANCE:
 			_dragging = true
-			_building_anchor = Vector2(-9999, -9999)
-			_at_anchor = false
+			clear_building_anchor()
 			get_viewport().set_input_as_handled()
-	else:
-		if _dragging:
-			_dragging = false
-			drop_requested.emit(cat_data, get_global_mouse_position())
 
 func _update_anim_state() -> void:
 	if cat_data == null:
@@ -107,7 +129,7 @@ func _process(delta: float) -> void:
 		queue_redraw()
 		return
 
-	if _building_anchor.x > -999.0:
+	if has_building_anchor():
 		if not _at_anchor:
 			if global_position.distance_to(_building_anchor) < 12.0:
 				_at_anchor = true
@@ -269,7 +291,7 @@ func _pick_new_target() -> void:
 	_waiting_for_target = false
 	if not is_inside_tree():
 		return
-	if _building_anchor.x <= -999.0 and not _dragging:
+	if not has_building_anchor() and not _dragging:
 		var x := randf_range(wander_rect.position.x, wander_rect.end.x)
 		var y := randf_range(wander_rect.position.y, wander_rect.end.y)
 		_target_position = Vector2(x, y)

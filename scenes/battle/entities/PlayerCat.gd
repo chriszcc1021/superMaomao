@@ -27,6 +27,8 @@ var move_speed: float = 70.0
 var attack_range: float = 5.0
 var crit_rate: float = 0.05
 var crit_multiplier: float = 1.5
+var _xp_progress: int = 0
+var _xp_to_next: int = 1
 
 var _buff_bonus := {
 	"max_hp": 0.0, "attack": 0.0, "move_speed": 0.0,
@@ -80,7 +82,7 @@ func setup(data: CatData, enemies_root: Node2D) -> void:
 	collision_layer = 1
 	collision_mask = 0
 	cat_data.calculate_stats()
-	base_max_hp = cat_data.base_hp
+	base_max_hp = _initial_hp_for_breed(cat_data.breed)
 	base_attack = cat_data.base_attack
 	base_move_speed = cat_data.base_move_speed
 	base_range = cat_data.base_range
@@ -134,8 +136,8 @@ func _process(delta: float) -> void:
 		_self_heal_timer -= delta
 		if _self_heal_timer <= 0.0:
 			_self_heal_timer = 5.0
-			var heal_amount := max_hp * 0.03
-			current_hp = min(current_hp + heal_amount, max_hp)
+			var heal_amount := maxf(1.0, ceilf(max_hp * 0.03))
+			current_hp = min(_snap_hp_points(current_hp + heal_amount), max_hp)
 			hp_changed.emit(current_hp, max_hp)
 			queue_redraw()
 	# sleepyhead：每30秒强制睡1秒（无敌+停止攻击）
@@ -174,14 +176,15 @@ func take_damage(amount: float) -> void:
 	# 无敌帧/睡觉无敌/复生无敌
 	if _iframes_timer > 0.0 or _sleeping or _revive_iframes > 0.0:
 		return
-	current_hp = max(current_hp - amount, 0.0)
-	# invulnerable_frame：受击后0.5秒无敌
+	current_hp = maxf(current_hp - GameConstants.BATTLE_PLAYER_HIT_DAMAGE, 0.0)
+	_iframes_timer = GameConstants.BATTLE_PLAYER_HIT_IFRAME_SEC
+	# invulnerable_frame：额外延长受击无敌时间
 	if "invulnerable_frame" in active_genes:
-		_iframes_timer = 0.5
+		_iframes_timer += 0.5
 	# tenacity_revive：首次濒死复生
 	if current_hp <= 0.0 and _revive_available:
 		_revive_available = false
-		current_hp = max_hp * 0.20
+		current_hp = maxf(1.0, ceilf(max_hp * 0.20))
 		_revive_iframes = 2.0
 		if get_parent() != null:
 			var _ft_r := FloatingText.new()
@@ -195,7 +198,7 @@ func take_damage(amount: float) -> void:
 	queue_redraw()
 	if get_parent() != null:
 		var _ft := FloatingText.new()
-		_ft._text = "-%d" % int(amount)
+		_ft._text = "-%d" % int(GameConstants.BATTLE_PLAYER_HIT_DAMAGE)
 		_ft._color = Color(0.95, 0.2, 0.2)
 		_ft.global_position = global_position + Vector2(randf_range(-6.0, 6.0), -20.0)
 		get_parent().add_child(_ft)
@@ -210,8 +213,13 @@ func register_kill() -> void:
 			_weapon_system.call("set_frenzy_bonus", _frenzy_stacks * 0.05)
 
 func heal(amount: float) -> void:
-	current_hp = min(current_hp + amount, max_hp)
+	current_hp = min(_snap_hp_points(current_hp + maxf(1.0, ceilf(amount))), max_hp)
 	hp_changed.emit(current_hp, max_hp)
+	queue_redraw()
+
+func set_xp_progress(current_xp: int, xp_to_next: int) -> void:
+	_xp_progress = maxi(current_xp, 0)
+	_xp_to_next = maxi(xp_to_next, 1)
 	queue_redraw()
 
 func get_attack_direction() -> Vector2:
@@ -231,7 +239,7 @@ func apply_buff(effect_key: String, value: float) -> void:
 	_buff_bonus[effect_key] = float(_buff_bonus[effect_key]) + value
 	var hp_ratio: float = current_hp / maxf(max_hp, 1.0) if max_hp > 0.0 else 1.0
 	_recalculate_runtime_stats()
-	current_hp = max_hp * hp_ratio
+	current_hp = clampf(_snap_hp_points(max_hp * hp_ratio), 0.0, max_hp)
 	hp_changed.emit(current_hp, max_hp)
 	queue_redraw()
 
@@ -245,7 +253,7 @@ func get_weapon_system() -> Node:
 	return _weapon_system
 
 func _recalculate_runtime_stats() -> void:
-	max_hp = base_max_hp * (1.0 + float(_buff_bonus["max_hp"]))
+	max_hp = _snap_hp_points(base_max_hp * (1.0 + float(_buff_bonus["max_hp"])))
 	attack = base_attack * (1.0 + float(_buff_bonus["attack"]))
 	move_speed = base_move_speed * (1.0 + float(_buff_bonus["move_speed"]))
 	attack_range = base_range * (1.0 + float(_buff_bonus["range"]))
@@ -302,3 +310,12 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2(-18, -24), Vector2(36, 4)), Color(0.15, 0.15, 0.15), true)
 	var hp_ratio: float = clamp(current_hp / max(max_hp, 1.0), 0.0, 1.0)
 	draw_rect(Rect2(Vector2(-18, -24), Vector2(36 * hp_ratio, 4)), Color(0.2, 0.9, 0.25), true)
+	draw_rect(Rect2(Vector2(-18, -18), Vector2(36, 3)), Color(0.12, 0.12, 0.18), true)
+	var xp_ratio: float = clamp(float(_xp_progress) / maxf(float(_xp_to_next), 1.0), 0.0, 1.0)
+	draw_rect(Rect2(Vector2(-18, -18), Vector2(36 * xp_ratio, 3)), Color(0.3, 0.65, 1.0), true)
+
+func _initial_hp_for_breed(breed_id: String) -> float:
+	return float(GameConstants.BATTLE_PLAYER_HP_BY_BREED.get(breed_id, 4.0))
+
+func _snap_hp_points(value: float) -> float:
+	return maxf(1.0, roundf(value))

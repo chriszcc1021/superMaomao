@@ -17,6 +17,40 @@ func advance_day(game_state: Node, event_bus: Node) -> void:
 	_roll_stray_cat(game_state, event_bus)
 	_tick_breeding_slots(game_state, event_bus)
 
+func get_continuous_resource_rates(game_state: Node) -> Dictionary:
+	var rates := {
+		"food_farm": 0,
+		"gold_mine": 0,
+		"fortune_cat": 0,
+	}
+	if game_state == null:
+		return rates
+
+	var community_bonus := _calc_community_planner_bonus(game_state)
+
+	if game_state.has_building("food_farm"):
+		var food_workers: int = _count_workers_at_building(game_state, "food_farm")
+		var food_gain: int = int(GameConstants.FOOD_FARM_OUTPUT_BY_WORKERS.get(food_workers, 3))
+		food_gain = _apply_worker_gene_bonus(game_state, "food_farm", food_gain)
+		rates["food_farm"] = int(food_gain * (1.0 + community_bonus))
+
+	if game_state.has_building("gold_mine"):
+		var gold_workers: int = _count_workers_at_building(game_state, "gold_mine")
+		var gold_gain: int = int(GameConstants.GOLD_MINE_OUTPUT_BY_WORKERS.get(gold_workers, 2))
+		gold_gain = _apply_worker_gene_bonus(game_state, "gold_mine", gold_gain)
+		rates["gold_mine"] = int(gold_gain * (1.0 + community_bonus))
+
+	if game_state.has_building("fortune_cat"):
+		var fortune_workers: int = _count_workers_at_building(game_state, "fortune_cat")
+		if fortune_workers > 0:
+			var level: int = int(game_state.get_building_level("fortune_cat"))
+			var per_worker: int = int(GameConstants.FORTUNE_CAT_OUTPUT_PER_WORKER.get(level, 15))
+			var fortune_gain := per_worker * fortune_workers
+			fortune_gain = _apply_worker_gene_bonus(game_state, "fortune_cat", fortune_gain)
+			rates["fortune_cat"] = int(fortune_gain * (1.0 + community_bonus))
+
+	return rates
+
 func _tick_breeding_slots(game_state: Node, event_bus: Node) -> void:
 	var born: Array[CatData] = game_state.tick_breeding_slots()
 	if born.is_empty() or event_bus == null:
@@ -69,38 +103,8 @@ func _check_lifecycle(game_state: Node) -> void:
 			game_state.mark_cat_dead(cat.id)
 
 func _produce_resources(game_state: Node) -> void:
-	# community_planner：全局产出加成
-	var community_bonus := _calc_community_planner_bonus(game_state)
-
-	if game_state.has_building("food_farm"):
-		# Bug fix: 使用实际分配到猫粮田的猫数，而非总可用猫数
-		var food_workers: int = _count_workers_at_building(game_state, "food_farm")
-		var food_gain: int = int(GameConstants.FOOD_FARM_OUTPUT_BY_WORKERS.get(food_workers, 3))
-		# hard_worker 加成（猫粮田中有hard_worker猫）
-		food_gain = _apply_worker_gene_bonus(game_state, "food_farm", food_gain)
-		food_gain = int(food_gain * (1.0 + community_bonus))
-		game_state.add_cat_food(food_gain)
-	else:
+	if not game_state.has_building("food_farm"):
 		game_state.add_cat_food(3)
-
-	if game_state.has_building("gold_mine"):
-		# Bug fix: 使用实际分配到金矿的猫数，而非总可用猫数的剩余
-		var gold_workers: int = _count_workers_at_building(game_state, "gold_mine")
-		var gold_gain: int = int(GameConstants.GOLD_MINE_OUTPUT_BY_WORKERS.get(gold_workers, 2))
-		# hard_worker + walnut_cracker 加成
-		gold_gain = _apply_worker_gene_bonus(game_state, "gold_mine", gold_gain)
-		gold_gain = int(gold_gain * (1.0 + community_bonus))
-		game_state.add_coins(gold_gain)
-
-	if game_state.has_building("fortune_cat"):
-		var fortune_workers: int = _count_workers_at_building(game_state, "fortune_cat")
-		if fortune_workers > 0:
-			var level: int = int(game_state.get_building_level("fortune_cat"))
-			var per_worker: int = int(GameConstants.FORTUNE_CAT_OUTPUT_PER_WORKER.get(level, 15))
-			var fortune_gain := per_worker * fortune_workers
-			fortune_gain = _apply_worker_gene_bonus(game_state, "fortune_cat", fortune_gain)
-			fortune_gain = int(fortune_gain * (1.0 + community_bonus))
-			game_state.add_coins(fortune_gain)
 
 	# golden_paw：每天额外产金
 	for cat: CatData in game_state.get_living_cats():
