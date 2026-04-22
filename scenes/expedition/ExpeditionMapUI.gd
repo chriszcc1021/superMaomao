@@ -132,7 +132,7 @@ func _refresh_view() -> void:
 		_clear_nodes()
 		return
 	_layer_label.text = "层数: %d / %d" % [game_state.expedition_layer, GameConsts.EXPEDITION_TOTAL_LAYERS]
-	_log_text.text = "胜场: %d\nBuff: %s\n获得主动基因: %d" % [
+	_log_text.text = "胜场: %d\n增益: %s\n获得主动基因: %d" % [
 		game_state.expedition_battle_wins,
 		_expedition_buffs_text(game_state.expedition_buffs),
 		game_state.expedition_active_genes.size()
@@ -148,7 +148,7 @@ func _refresh_nodes() -> void:
 		var node_data: Dictionary = _current_nodes[idx]
 		var button := Button.new()
 		button.custom_minimum_size = Vector2(260.0, 120.0)
-		button.text = str(node_data.get("label", "Node"))
+		button.text = str(node_data.get("label", "节点"))
 		button.pressed.connect(_on_node_pressed.bind(idx))
 		_node_row.add_child(button)
 

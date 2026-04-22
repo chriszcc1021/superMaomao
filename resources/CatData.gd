@@ -92,7 +92,7 @@ func set_special_gene(slot_idx: int, gene_id: String) -> void:
 			gene_slot_3 = gene_id
 
 func can_breed() -> bool:
-	return breed_count < GameConstants.MAX_BREED_COUNT and status != GameConstants.LIFECYCLE_STATUS_ELDER and status != GameConstants.LIFECYCLE_STATUS_DEAD
+	return breed_count < GameConstants.MAX_BREED_COUNT and status != GameConstants.LIFECYCLE_STATUS_DEAD
 
 ## 检查猫是否拥有指定基因（三槽任一匹配）
 func has_gene(gene_id: String) -> bool:

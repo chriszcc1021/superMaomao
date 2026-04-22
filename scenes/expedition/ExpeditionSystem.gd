@@ -76,7 +76,7 @@ func resolve_question_event(game_state: Node) -> String:
 		"mystery_buff":
 			var buff := "mystery_buff_%d" % randi_range(1, GameConstants.EXPEDITION_MYSTERY_BUFF_VARIANTS)
 			game_state.add_expedition_buff(buff)
-			return "问号事件：获得一个远征 Buff。"
+			return "问号事件：获得一个远征增益。"
 		"stray_kitten":
 			var cat := CatFactory.create_random_stray_cat("event_stray", "奇遇流浪猫")
 			if game_state.enqueue_stray_cat(cat):

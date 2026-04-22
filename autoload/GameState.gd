@@ -457,6 +457,8 @@ func get_breeding_slot(index: int) -> Dictionary:
 func start_breeding_in_slot(slot_idx: int, father_id: String, mother_id: String, child_breed: String, child_profession: String) -> bool:
 	if slot_idx < 0 or slot_idx >= breeding_slots.size():
 		return false
+	if not has_building("nursery"):
+		return false
 	var slot: Dictionary = breeding_slots[slot_idx]
 	if slot.get("active", false):
 		return false
@@ -474,7 +476,7 @@ func start_breeding_in_slot(slot_idx: int, father_id: String, mother_id: String,
 	if father.sex != GameConstants.SEX_MALE or mother.sex != GameConstants.SEX_FEMALE:
 		return false
 	# 成功率检定
-	var chance := GameConstants.BREED_SUCCESS_WITH_NURSERY if has_building("nursery") else GameConstants.BREED_SUCCESS_WITHOUT_NURSERY
+	var chance := GameConstants.BREED_SUCCESS_WITH_NURSERY
 	if father.has_gene("love_spreader") or mother.has_gene("love_spreader"):
 		chance = minf(1.0, chance + 0.15)
 	if randf() > chance:

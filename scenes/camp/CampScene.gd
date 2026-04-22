@@ -215,9 +215,7 @@ func _show_building_preview(building_id: String) -> void:
 			lines.append("解锁费用：%d金" % cost)
 		"nursery":
 			lines.append("🍼 产房【未解锁】")
-			lines.append("效果：繁育成功率从%d%%提升至%d%%" % [
-				int(GameConstants.BREED_SUCCESS_WITHOUT_NURSERY * 100),
-				int(GameConstants.BREED_SUCCESS_WITH_NURSERY * 100)])
+			lines.append("效果：解锁繁育功能，当前成功率 %d%%" % int(GameConstants.BREED_SUCCESS_WITH_NURSERY * 100))
 			lines.append("解锁费用：%d金" % cost)
 		"hospital":
 			lines.append("🏥 医院【未解锁】")
@@ -422,7 +420,7 @@ func _add_upgrade_buttons(building_id: String) -> void:
 				)
 		"nursery":
 			_add_action_button(
-				"Open Breeding",
+				"打开繁育界面",
 				_open_nursery_breeding,
 				true
 			)
@@ -591,7 +589,7 @@ func _on_cat_drop_requested(cat: CatData, world_pos: Vector2) -> void:
 
 	if _game_state.has_method("is_cat_breeding") and _game_state.is_cat_breeding(cat):
 		if nearest_id != "nursery":
-			_set_sidebar_text("Breeding cats must stay in the nursery.")
+			_set_sidebar_text("繁育中的猫必须留在产房。")
 			_refresh_cat_nodes()
 			return
 		_open_nursery_breeding()
@@ -701,7 +699,7 @@ func _refresh_hud() -> void:
 		_speed_btn = null
 		_create_speed_button()
 	elif _time_manager != null:
-		_speed_btn.text = "%g×" % _time_manager.time_speed
+		_speed_btn.text = _format_speed_text(_time_manager.time_speed)
 
 func _refresh_cat_list() -> void:
 	var lines: PackedStringArray = []
@@ -770,7 +768,7 @@ func _on_breeding_success(child: CatData) -> void:
 func _cat_runtime_status_text(cat: CatData) -> String:
 	var status_text := _status_zh(cat.status)
 	if _game_state != null and _game_state.has_method("is_cat_breeding") and _game_state.is_cat_breeding(cat):
-		status_text += " / BREEDING"
+		status_text += " / 繁育中"
 	return status_text
 
 func _status_zh(status_id: String) -> String:
@@ -953,7 +951,7 @@ func _starter_card_info_text(cat: CatData) -> String:
 	return (
 		"%s\n" % cat.cat_name
 		+ "%s  %s  %s\n" % [GameConstants.sex_display(cat.sex), GameConstants.profession_zh(cat.profession), GameConstants.breed_zh(cat.breed)]
-		+ "HP %.0f  攻击 %.0f\n" % [cat.base_hp, cat.base_attack]
+		+ "生命 %.0f  攻击 %.0f\n" % [cat.base_hp, cat.base_attack]
 		+ "射程 %.1f  攻速 %.2f/s\n" % [cat.base_range, cat.base_attack_speed]
 		+ "特性：%s" % trait_text
 	)
@@ -1046,10 +1044,16 @@ func _create_speed_button() -> void:
 	btn.tooltip_text = "切换时间速率 (1×/2×/5×/10×)"
 	btn.pressed.connect(func() -> void:
 		var new_speed: float = _time_manager.cycle_speed()
-		btn.text = "%g×" % new_speed
+		btn.text = _format_speed_text(new_speed)
 	)
 	hbox.add_child(btn)
 	_speed_btn = btn
+
+func _format_speed_text(speed: float) -> String:
+	var speed_text := str(snappedf(speed, 0.1))
+	if speed_text.ends_with(".0"):
+		speed_text = speed_text.left(speed_text.length() - 2)
+	return "%s×" % speed_text
 
 # ── 轻量提示（status_label 短暂显示，不覆盖 sidebar）────────────────────────
 func _show_toast(text: String) -> void:

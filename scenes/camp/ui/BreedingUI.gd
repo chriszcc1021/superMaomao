@@ -160,7 +160,7 @@ func _update_prediction() -> void:
 		_prediction_label.text = "父猫和母猫不能是同一只。"
 		return
 	var predicted = _breeding_system.predict_range(father, mother, _selected_child_breed(), _selected_child_profession(), 100)
-	_prediction_label.text = "子代属性预测范围：\nHP %.0f–%.0f  攻击 %.0f–%.0f\n攻速 %.2f–%.2f  射程 %.1f–%.1f\n暴击率 %.0f%%–%.0f%%" % [
+	_prediction_label.text = "子代属性预测范围：\n生命 %.0f–%.0f  攻击 %.0f–%.0f\n攻速 %.2f–%.2f  射程 %.1f–%.1f\n暴击率 %.0f%%–%.0f%%" % [
 		predicted.hp_min, predicted.hp_max,
 		predicted.atk_min, predicted.atk_max,
 		predicted.aspd_min, predicted.aspd_max,
