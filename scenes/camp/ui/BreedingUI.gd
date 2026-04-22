@@ -189,6 +189,9 @@ func _on_confirm_pressed() -> void:
 		_form_panel.visible = false
 		_active_slot_idx = -1
 		refresh()
+		var scene := get_tree().current_scene
+		if scene != null and scene.has_method("_refresh_all"):
+			scene.call_deferred("_refresh_all")
 	else:
 		_status_label.text = "繁育启动失败（可能猫咪条件不满足或本次概率未命中）。"
 
