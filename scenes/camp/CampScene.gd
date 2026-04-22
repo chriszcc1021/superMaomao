@@ -69,6 +69,7 @@ var _starter_choice_buttons: Array[Button] = []
 var _starter_previews: Array[Control] = []
 var _starter_info_labels: Array[Label] = []
 var _starter_overlay_paused_time: bool = false
+var _expedition_summary_dialog: AcceptDialog = null
 
 # 升级按钮容器（动态创建）
 var _action_btn_container: VBoxContainer = null
@@ -87,11 +88,13 @@ func _ready() -> void:
 	_bind_signals()
 	_bind_time_signals()
 	_build_starter_overlay()
+	_build_expedition_summary_dialog()
 	_refresh_starter_overlay()
 	_refresh_all()
 	if _next_day_button != null:
 		_next_day_button.visible = true
 	_create_speed_button()
+	_show_pending_expedition_summary()
 
 func _process(_delta: float) -> void:
 	_refresh_time_label()
@@ -578,6 +581,12 @@ func _on_cat_drop_requested(cat: CatData, world_pos: Vector2) -> void:
 		return
 
 	# ── 病态猫：只能拖进医院 ──────────────────────────────────────────────────
+	if cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
+		cat.assigned_building = ""
+		_set_sidebar_text("退休的猫不能再工作、繁育或出征。")
+		_refresh_cat_nodes()
+		return
+
 	if cat.health != GameConstants.HEALTH_STATE_HEALTHY:
 		if nearest_id == "hospital" and _game_state.has_building("hospital"):
 			cat.assigned_building = "hospital"
@@ -811,9 +820,32 @@ func _get_expedition_candidates() -> Array[CatData]:
 		return _game_state.get_expedition_candidates()
 	var candidates: Array[CatData] = []
 	for cat: CatData in _game_state.get_living_cats():
-		if cat != null and cat.health == GameConstants.HEALTH_STATE_HEALTHY:
+		if cat != null and cat.status != GameConstants.LIFECYCLE_STATUS_RETIRED and cat.health == GameConstants.HEALTH_STATE_HEALTHY:
 			candidates.append(cat)
 	return candidates
+
+func _build_expedition_summary_dialog() -> void:
+	if _ui_layer == null or _expedition_summary_dialog != null:
+		return
+	var dialog := AcceptDialog.new()
+	dialog.title = "远征结算"
+	dialog.dialog_text = ""
+	dialog.exclusive = true
+	dialog.unresizable = true
+	_ui_layer.add_child(dialog)
+	_expedition_summary_dialog = dialog
+
+func _show_pending_expedition_summary() -> void:
+	if _game_state == null:
+		return
+	var summary := str(_game_state.pending_expedition_summary)
+	if summary.is_empty():
+		return
+	_game_state.pending_expedition_summary = ""
+	_set_sidebar_text(summary)
+	if _expedition_summary_dialog != null:
+		_expedition_summary_dialog.dialog_text = summary
+		_expedition_summary_dialog.popup_centered(Vector2i(460, 220))
 
 func _build_starter_overlay() -> void:
 	if _starter_overlay != null:

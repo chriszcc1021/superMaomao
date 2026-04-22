@@ -20,6 +20,7 @@ var _selected_cat: CatData = null
 var _selected_cat_source: CatData = null
 var _battle_over: bool = false
 var _battle_paused: bool = false
+var _battle_failed_by_death: bool = false
 var _battle_time_left: float = GameConstants.BATTLE_NORMAL_DURATION
 
 # 等级系统：直接映射猫的永久等级
@@ -549,6 +550,7 @@ func _on_player_hp_changed(_cur: float, _max: float) -> void:
 	_refresh_hud()
 
 func _on_player_died() -> void:
+	_battle_failed_by_death = true
 	_finish_battle(false)
 
 func _refresh_hud() -> void:
@@ -592,7 +594,9 @@ func _finish_battle(victory: bool) -> void:
 		"battle_node_type": _node_type,
 		"battle_wins": 1 if victory else 0,
 		"active_genes_gained": _active_genes_gained.duplicate(),
-		"level_reached": _level
+		"level_reached": _level,
+		"cat_retired": _battle_failed_by_death,
+		"failure_reason": "battle_death" if _battle_failed_by_death else ""
 	}
 	var scene_manager := _get_scene_manager()
 	if scene_manager != null:

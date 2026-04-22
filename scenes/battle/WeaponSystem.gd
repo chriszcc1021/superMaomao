@@ -110,9 +110,8 @@ func _fire_basic_claw() -> void:
 
 	match _breed:
 		"ragdoll":
-			# 穿透直线弹，伤害×0.9
+			# 标准直线弹；布偶只通过属性体现厚实，不再额外附带穿透。
 			var p: Projectile = _make_projectile(dir, base_dmg * 0.9, range_px, Color(0.85, 0.75, 1.0))
-			p.is_piercing = true
 			_apply_gene_flags_to_projectile(p)
 			_projectile_root.add_child(p)
 

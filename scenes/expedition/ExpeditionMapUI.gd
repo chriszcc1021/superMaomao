@@ -104,7 +104,7 @@ func _process_returned_battle() -> void:
 	if not bool(result.get("handled", false)):
 		return
 	if bool(result.get("finished", false)):
-		_finish_expedition(bool(result.get("success", false)))
+		_finish_expedition(bool(result.get("success", false)), result)
 		return
 	_status_label.text = str(result.get("status", ""))
 	_generate_nodes_for_current_layer()
@@ -189,8 +189,8 @@ func _advance_non_battle_layer() -> void:
 	_generate_nodes_for_current_layer()
 	_refresh_view()
 
-func _finish_expedition(success: bool) -> void:
-	var reward := _system.finish_expedition(_get_game_state(), _get_event_bus(), success)
+func _finish_expedition(success: bool, result: Dictionary = {}) -> void:
+	var reward := _system.finish_expedition(_get_game_state(), _get_event_bus(), success, result.get("battle_result", {}))
 	_status_label.text = "远征结束，获得金币：%d。" % reward
 	_go_to_camp()
 
@@ -211,7 +211,7 @@ func _get_expedition_candidates(game_state: Node) -> Array[CatData]:
 		return result
 	var candidates: Array[CatData] = []
 	for cat: CatData in game_state.get_living_cats():
-		if cat != null and cat.health == GameConsts.HEALTH_STATE_HEALTHY:
+		if cat != null and cat.status != GameConsts.LIFECYCLE_STATUS_RETIRED and cat.health == GameConsts.HEALTH_STATE_HEALTHY:
 			candidates.append(cat)
 	return candidates
 

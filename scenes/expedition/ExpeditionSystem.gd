@@ -23,7 +23,7 @@ func start_expedition(game_state: Node, cat: CatData) -> bool:
 	return game_state.start_expedition(cat)
 
 func process_returned_battle(scene_manager: Node, game_state: Node) -> Dictionary:
-	var output := {"handled": false, "finished": false, "success": false, "status": ""}
+	var output := {"handled": false, "finished": false, "success": false, "status": "", "battle_result": {}}
 	if scene_manager == null or game_state == null or not game_state.expedition_active:
 		return output
 	var result: Dictionary = scene_manager.last_battle_result
@@ -32,6 +32,12 @@ func process_returned_battle(scene_manager: Node, game_state: Node) -> Dictionar
 	scene_manager.last_battle_result = {}
 	game_state.record_expedition_battle_result(result)
 	output.handled = true
+	output.battle_result = result.duplicate(true)
+	if not bool(result.get("victory", false)):
+		output.finished = true
+		output.success = false
+		output.status = "猫在战斗中倒下了，远征立即结束。"
+		return output
 	var was_boss_battle := str(result.get("battle_node_type", "")) == "battle_boss"
 	if was_boss_battle:
 		output.finished = true
@@ -97,7 +103,7 @@ func advance_non_battle_layer(game_state: Node) -> bool:
 	var next_layer: int = game_state.advance_expedition_layer()
 	return next_layer > GameConstants.EXPEDITION_TOTAL_LAYERS
 
-func finish_expedition(game_state: Node, event_bus: Node, success: bool) -> int:
+func finish_expedition(game_state: Node, event_bus: Node, success: bool, battle_result: Dictionary = {}) -> int:
 	if game_state == null:
 		return 0
 	var reward_mult := GameConstants.EXPEDITION_BATTLE_REWARD_SUCCESS_MULT if success else GameConstants.EXPEDITION_BATTLE_REWARD_FAIL_MULT
@@ -105,14 +111,30 @@ func finish_expedition(game_state: Node, event_bus: Node, success: bool) -> int:
 	game_state.add_coins(reward)
 	var cat := _find_expedition_cat(game_state)
 	if cat != null:
-		_write_active_genes(cat, game_state.expedition_active_genes)
 		cat.has_expeditioned = true
-		if cat.status != GameConstants.LIFECYCLE_STATUS_DEAD:
+		cat.assigned_building = ""
+		if bool(battle_result.get("cat_retired", false)):
+			if game_state.has_method("retire_cat"):
+				game_state.retire_cat(cat.id)
+			else:
+				cat.status = GameConstants.LIFECYCLE_STATUS_RETIRED
+				cat.health = GameConstants.HEALTH_STATE_HEALTHY
+		else:
+			_write_active_genes(cat, game_state.expedition_active_genes)
 			cat.status = GameConstants.LIFECYCLE_STATUS_IDLE
+	game_state.pending_expedition_summary = _build_expedition_summary(cat, success, reward, battle_result)
 	game_state.clear_expedition_state()
 	if event_bus != null:
 		event_bus.expedition_ended.emit(success, reward)
 	return reward
+
+func _build_expedition_summary(cat: CatData, success: bool, reward: int, battle_result: Dictionary) -> String:
+	var cat_name := cat.cat_name if cat != null else "这只猫"
+	if bool(battle_result.get("cat_retired", false)):
+		return "远征失败\n%s 在远征中倒下，已退休。\n获得金币：%d" % [cat_name, reward]
+	if success:
+		return "远征成功\n%s 平安归来。\n获得金币：%d" % [cat_name, reward]
+	return "远征结束\n%s 返回了营地。\n获得金币：%d" % [cat_name, reward]
 
 func _find_expedition_cat(game_state: Node) -> CatData:
 	for cat: CatData in game_state.cats:

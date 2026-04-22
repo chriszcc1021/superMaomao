@@ -25,9 +25,7 @@ var _slow_multiplier: float = 1.0
 
 func _ready() -> void:
 	current_hp = max_hp
-	# 敌人在 layer=2，只与其他敌人碰撞（mask=2），不推动玩家猫（layer=1不在mask里）
-	collision_layer = 2
-	collision_mask = 2
+	# 使用场景里配置的 layer/mask，保证投射物 Area2D 可以正确检测到敌人。
 	queue_redraw()
 
 func setup(definition: Dictionary, player_target: Node2D) -> void:

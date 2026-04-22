@@ -1,6 +1,6 @@
 extends Node
 
-# Preloader autoload 确保这些 class_name 在 GameState 解析前已注册
+# Preloader autoload 确保这些 class_name �?GameState 解析前已注册
 # 但为安全起见保留显式引用（Godot 4.2 autoload 有时仍需要）
 const CatData        := preload("res://resources/CatData.gd")
 const GameConstants  := preload("res://data/constants.gd")
@@ -46,6 +46,7 @@ var expedition_battle_wins: int = 0
 var expedition_buffs: Array = []
 var expedition_active_genes: Array[String] = []
 var expedition_shop_cards: Array = []
+var pending_expedition_summary: String = ""
 var buildings_built: Dictionary = DEFAULT_BUILDINGS_BUILT.duplicate(true)
 var cat_house_slots: int = GameConstants.STARTING_CAT_HOUSE_SLOTS
 
@@ -119,6 +120,7 @@ func reset_state() -> void:
 	expedition_buffs.clear()
 	expedition_active_genes.clear()
 	expedition_shop_cards.clear()
+	pending_expedition_summary = ""
 	buildings_built = DEFAULT_BUILDINGS_BUILT.duplicate(true)
 	cat_house_slots = GameConstants.STARTING_CAT_HOUSE_SLOTS
 	max_breeding_slots = GameConstants.BREEDING_SLOT_INITIAL
@@ -177,6 +179,8 @@ func get_occupied_cat_house_slots() -> int:
 	for cat: CatData in cats:
 		if cat == null:
 			continue
+		if cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
+			continue
 		if cat.status == GameConstants.LIFECYCLE_STATUS_BURIED:
 			continue  # 已入葬，不占坑位
 		occupied += 1
@@ -186,6 +190,8 @@ func get_living_cats() -> Array[CatData]:
 	var living: Array[CatData] = []
 	for cat: CatData in cats:
 		if cat == null:
+			continue
+		if cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
 			continue
 		if cat.status == GameConstants.LIFECYCLE_STATUS_DEAD:
 			continue
@@ -279,7 +285,9 @@ func get_expedition_block_reason(cat: CatData) -> String:
 	if cat.status == GameConstants.LIFECYCLE_STATUS_DEAD:
 		return "死亡的猫不能出征。"
 	if cat.status == GameConstants.LIFECYCLE_STATUS_BURIED:
-		return "这只猫已经不可用。"
+		return "这只猫已经不可用了。"
+	if cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
+		return "退休的猫不能再出征。"
 	if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
 		return "这只猫已经在远征中。"
 	if cat.has_expeditioned:
@@ -343,6 +351,14 @@ func clear_expedition_state() -> void:
 	expedition_active_genes.clear()
 	expedition_shop_cards.clear()
 
+func retire_cat(cat_id: String) -> void:
+	var cat := find_cat(cat_id)
+	if cat == null:
+		return
+	cat.status = GameConstants.LIFECYCLE_STATUS_RETIRED
+	cat.health = GameConstants.HEALTH_STATE_HEALTHY
+	cat.assigned_building = ""
+
 func _schedule_intro_stray(selected_sex: String) -> void:
 	intro_stray_pending = true
 	intro_stray_arrived = false
@@ -357,10 +373,10 @@ func _opposite_sex(value: String) -> String:
 # ─── 建筑升级 ─────────────────────────────────────────────────────────────────
 
 ## 返回升级是否成功
-## 建造一个新建筑。成功返回 true，失败返回 false。
+## 建造一个新建筑。成功返�?true，失败返�?false�?
 func build_building(building_id: String) -> bool:
 	if has_building(building_id):
-		return false  # 已建造
+		return false  # 已建�?
 	var cost: int = int(GameConstants.BUILDING_COSTS.get(building_id, 0))
 	if cost > 0 and not spend_coins(cost):
 		return false
@@ -425,7 +441,7 @@ func _upgrade_fortune_cat() -> bool:
 func _upgrade_nursery() -> bool:
 	if max_breeding_slots >= GameConstants.BREEDING_SLOT_MAX:
 		return false
-	var cost_idx: int = max_breeding_slots - 1  # 0-based: 0=解锁第2坑, 1=解锁第3坑
+	var cost_idx: int = max_breeding_slots - 1  # 0-based: 0=解锁�?�? 1=解锁�?�?
 	if cost_idx < 0 or cost_idx >= GameConstants.BREEDING_SLOT_UPGRADE_COSTS.size():
 		return false
 	var cost: int = int(GameConstants.BREEDING_SLOT_UPGRADE_COSTS[cost_idx])
@@ -453,7 +469,7 @@ func get_breeding_slot(index: int) -> Dictionary:
 		return {}
 	return breeding_slots[index]
 
-## 启动一个坑位的繁育。成功返回 true，失败返回 false。
+## 启动一个坑位的繁育。成功返�?true，失败返�?false�?
 func start_breeding_in_slot(slot_idx: int, father_id: String, mother_id: String, child_breed: String, child_profession: String) -> bool:
 	if slot_idx < 0 or slot_idx >= breeding_slots.size():
 		return false
@@ -475,7 +491,7 @@ func start_breeding_in_slot(slot_idx: int, father_id: String, mother_id: String,
 		return false
 	if father.sex != GameConstants.SEX_MALE or mother.sex != GameConstants.SEX_FEMALE:
 		return false
-	# 成功率检定
+	# 成功率检查
 	var chance := GameConstants.BREED_SUCCESS_WITH_NURSERY
 	if father.has_gene("love_spreader") or mother.has_gene("love_spreader"):
 		chance = minf(1.0, chance + 0.15)
@@ -528,7 +544,7 @@ func find_cat(cat_id: String) -> CatData:
 			return cat
 	return null
 
-## 入葬猫咪到墓地，生成生平，释放坑位
+## 入葬猫咪到墓地，生成生平，释放坑�?
 func bury_cat(cat_id: String) -> String:
 	var cat := find_cat(cat_id)
 	if cat == null or cat.status != GameConstants.LIFECYCLE_STATUS_DEAD:
@@ -555,5 +571,5 @@ func _generate_biography(cat: CatData) -> String:
 		for g: String in genes:
 			names.append(str(GameConstants.GENE_DISPLAY_ZH.get(g, {}).get("name", g)))
 		lines.append("天赋：%s" % "、".join(names))
-	lines.append("愿你在天堂有吃不完的鱼罐头。🐟")
+	lines.append("愿你在天堂有吃不完的鱼罐头。")
 	return "\n".join(lines)

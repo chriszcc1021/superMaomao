@@ -61,6 +61,8 @@ func _age_all_cats(game_state: Node) -> void:
 
 func _check_lifecycle(game_state: Node) -> void:
 	for cat: CatData in game_state.get_living_cats():
+		if cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
+			continue
 		if cat.age_days >= GameConstants.ADULT_MAX_DAYS or cat.breed_count >= GameConstants.MAX_BREED_COUNT:
 			cat.status = GameConstants.LIFECYCLE_STATUS_ELDER
 		if cat.status == GameConstants.LIFECYCLE_STATUS_ELDER and cat.age_days >= GameConstants.ADULT_MAX_DAYS + GameConstants.ELDER_DAYS:
@@ -102,6 +104,8 @@ func _produce_resources(game_state: Node) -> void:
 
 	# golden_paw：每天额外产金
 	for cat: CatData in game_state.get_living_cats():
+		if cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
+			continue
 		if cat.has_gene("golden_paw"):
 			game_state.add_coins(8)
 
@@ -116,7 +120,7 @@ func _apply_worker_gene_bonus(game_state: Node, building_id: String, base_amount
 	for cat: CatData in game_state.get_living_cats():
 		if str(cat.assigned_building) != building_id:
 			continue
-		if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
+		if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION or cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
 			continue
 		if cat.has_gene("hard_worker"):
 			mult += 0.20
@@ -127,6 +131,8 @@ func _apply_worker_gene_bonus(game_state: Node, building_id: String, base_amount
 func _calc_community_planner_bonus(game_state: Node) -> float:
 	var planner_present := false
 	for cat: CatData in game_state.get_living_cats():
+		if cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
+			continue
 		if cat.has_gene("community_planner"):
 			planner_present = true
 			break
@@ -135,7 +141,9 @@ func _calc_community_planner_bonus(game_state: Node) -> float:
 	# 统计所有在岗的猫（最多5只加成）
 	var worker_count := 0
 	for cat: CatData in game_state.get_living_cats():
-		if not str(cat.assigned_building).is_empty() and cat.status != GameConstants.LIFECYCLE_STATUS_EXPEDITION:
+		if not str(cat.assigned_building).is_empty() \
+				and cat.status != GameConstants.LIFECYCLE_STATUS_EXPEDITION \
+				and cat.status != GameConstants.LIFECYCLE_STATUS_RETIRED:
 			worker_count += 1
 	return min(worker_count, 5) * 0.02
 
@@ -146,6 +154,8 @@ func _process_hospital_healing(game_state: Node) -> void:
 	# mini_nurse 加成
 	var hospital_workers_with_mini_nurse := 0
 	for cat: CatData in game_state.get_living_cats():
+		if cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
+			continue
 		if str(cat.assigned_building) == "hospital" and cat.has_gene("mini_nurse"):
 			hospital_workers_with_mini_nurse += 1
 	if hospital_workers_with_mini_nurse > 0:
@@ -161,7 +171,7 @@ func _process_hospital_healing(game_state: Node) -> void:
 
 func _grant_building_xp(game_state: Node) -> void:
 	for cat: CatData in game_state.get_living_cats():
-		if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
+		if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION or cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
 			continue
 		if cat.age_days < GameConstants.KITTEN_DAYS:
 			continue
@@ -192,7 +202,7 @@ func _apply_cat_xp(cat: CatData, amount: int) -> void:
 func _count_workers_at_building(game_state: Node, building_id: String) -> int:
 	var count := 0
 	for cat: CatData in game_state.get_living_cats():
-		if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
+		if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION or cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
 			continue
 		if cat.age_days < GameConstants.KITTEN_DAYS:
 			continue
@@ -203,7 +213,7 @@ func _count_workers_at_building(game_state: Node, building_id: String) -> int:
 func _count_available_workers(game_state: Node) -> int:
 	var count := 0
 	for cat: CatData in game_state.get_living_cats():
-		if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
+		if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION or cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
 			continue
 		if cat.age_days < GameConstants.KITTEN_DAYS:
 			continue
@@ -220,6 +230,8 @@ func _roll_stray_cat(game_state: Node, event_bus: Node) -> void:
 		chance = min(1.0, chance + GameConstants.HEART_CAT_HOUSE_STRAY_CHANCE_BONUS)
 	# lucky_cat：任一猫有此基因，流浪猫来访概率+15%
 	for cat: CatData in game_state.get_living_cats():
+		if cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
+			continue
 		if cat.has_gene("lucky_cat"):
 			chance = min(1.0, chance + 0.15)
 			break
