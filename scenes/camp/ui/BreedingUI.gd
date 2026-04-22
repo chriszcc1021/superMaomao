@@ -50,7 +50,7 @@ func open_for_building() -> void:
 		_open_form_for_slot(slot_idx)
 	else:
 		_form_panel.visible = false
-		_status_label.text = "No breeding slot is currently free."
+		_status_label.text = "所有坑位均已占用，请等待幼崽出生。"
 
 func refresh() -> void:
 	if _game_state == null:
@@ -74,33 +74,33 @@ func _make_slot_card(idx: int, slot: Dictionary) -> PanelContainer:
 	card.add_child(vbox)
 
 	var title := Label.new()
-	title.text = "Slot %d" % (idx + 1)
+	title.text = "坑位 %d" % (idx + 1)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title)
 
 	if slot.get("active", false):
 		var father: CatData = _game_state.find_cat(str(slot.get("father_id", "")))
 		var mother: CatData = _game_state.find_cat(str(slot.get("mother_id", "")))
-		var father_name := str(father.cat_name) if father != null else "Unknown"
-		var mother_name := str(mother.cat_name) if mother != null else "Unknown"
+		var father_name := str(father.cat_name) if father != null else "未知"
+		var mother_name := str(mother.cat_name) if mother != null else "未知"
 
 		var info := Label.new()
-		info.text = "M %s\nF %s" % [father_name, mother_name]
+		info.text = "♂ %s\n♀ %s" % [father_name, mother_name]
 		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		vbox.add_child(info)
 
 		var days_label := Label.new()
-		days_label.text = "%d day(s) left" % int(slot.get("days_remaining", 0))
+		days_label.text = "还需 %d 天" % int(slot.get("days_remaining", 0))
 		days_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		vbox.add_child(days_label)
 	else:
 		var empty_label := Label.new()
-		empty_label.text = "Empty slot"
+		empty_label.text = "空闲"
 		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		vbox.add_child(empty_label)
 
 		var btn := Button.new()
-		btn.text = "Start breeding"
+		btn.text = "开始繁育"
 		btn.pressed.connect(func() -> void: _open_form_for_slot(idx))
 		vbox.add_child(btn)
 
@@ -111,7 +111,7 @@ func _open_form_for_slot(slot_idx: int) -> void:
 	_form_panel.visible = true
 	_available_cats = _collect_breedable_cats()
 	_refresh_parent_options()
-	_status_label.text = "Choose a father and mother for slot %d." % (slot_idx + 1)
+	_status_label.text = "为坑位 %d 选择父猫和母猫。" % (slot_idx + 1)
 
 func _bind_static_options() -> void:
 	_breed_option.clear()
@@ -143,7 +143,7 @@ func _refresh_parent_options() -> void:
 	_male_count = males.size()
 	_confirm_button.disabled = males.is_empty() or females.is_empty()
 	if males.is_empty() or females.is_empty():
-		_prediction_label.text = "Need at least one male cat and one female cat."
+		_prediction_label.text = "需要至少一只公猫和一只母猫才能繁育。"
 		return
 	_update_prediction()
 
@@ -154,13 +154,13 @@ func _update_prediction() -> void:
 	var father = _selected_parent(_father_option)
 	var mother = _selected_parent(_mother_option)
 	if father == null or mother == null:
-		_prediction_label.text = "Select both parents first."
+		_prediction_label.text = "请先选择父猫和母猫。"
 		return
 	if father == mother:
-		_prediction_label.text = "The two parents must be different cats."
+		_prediction_label.text = "父猫和母猫不能是同一只。"
 		return
 	var predicted = _breeding_system.predict_range(father, mother, _selected_child_breed(), _selected_child_profession(), 100)
-	_prediction_label.text = "Predicted child range:\nHP %.0f - %.0f  ATK %.0f - %.0f\nASPD %.2f - %.2f  RNG %.1f - %.1f\nCRIT %.0f%% - %.0f%%" % [
+	_prediction_label.text = "子代属性预测范围：\nHP %.0f–%.0f  攻击 %.0f–%.0f\n攻速 %.2f–%.2f  射程 %.1f–%.1f\n暴击率 %.0f%%–%.0f%%" % [
 		predicted.hp_min, predicted.hp_max,
 		predicted.atk_min, predicted.atk_max,
 		predicted.aspd_min, predicted.aspd_max,
@@ -174,23 +174,23 @@ func _on_confirm_pressed() -> void:
 	var father = _selected_parent(_father_option)
 	var mother = _selected_parent(_mother_option)
 	if father == null or mother == null:
-		_status_label.text = "Select both parents first."
+		_status_label.text = "请先选择父猫和母猫。"
 		return
 	if father == mother:
-		_status_label.text = "The two parents must be different cats."
+		_status_label.text = "父猫和母猫不能是同一只。"
 		return
 	if not _game_state.has_free_cat_house_slot():
-		_status_label.text = "The cat house is full."
+		_status_label.text = "猫窝已满，请先扩建猫窝。"
 		return
 
 	var ok: bool = _game_state.start_breeding_in_slot(_active_slot_idx, father.id, mother.id, _selected_child_breed(), _selected_child_profession())
 	if ok:
-		_status_label.text = "Breeding started. The kitten arrives in %d day(s)." % GameConstants.BREEDING_SLOT_CD_DAYS
+		_status_label.text = "繁育开始！幼崽将在 %d 天后出生。" % GameConstants.BREEDING_SLOT_CD_DAYS
 		_form_panel.visible = false
 		_active_slot_idx = -1
 		refresh()
 	else:
-		_status_label.text = "Breeding could not be started."
+		_status_label.text = "繁育启动失败（可能猫咪条件不满足或本次概率未命中）。"
 
 func _refresh_upgrade_button() -> void:
 	if _game_state == null:
@@ -198,12 +198,12 @@ func _refresh_upgrade_button() -> void:
 	var slots: int = _game_state.max_breeding_slots
 	var max_slots: int = GameConstants.BREEDING_SLOT_MAX
 	if slots >= max_slots:
-		_upgrade_button.text = "Slots maxed"
+		_upgrade_button.text = "坑位已达上限"
 		_upgrade_button.disabled = true
 		return
 	var cost_idx: int = slots - 1
 	var cost: int = int(GameConstants.BREEDING_SLOT_UPGRADE_COSTS[cost_idx])
-	_upgrade_button.text = "Upgrade nursery +1 slot (%d coins)" % cost
+	_upgrade_button.text = "扩建产房 +1 坑位（%d金）" % cost
 	_upgrade_button.disabled = _game_state.coins < cost
 
 func _on_upgrade_pressed() -> void:
@@ -211,16 +211,19 @@ func _on_upgrade_pressed() -> void:
 		return
 	var ok: bool = _game_state.upgrade_building("nursery")
 	if ok:
-		_status_label.text = "Nursery upgraded. Total slots: %d." % _game_state.max_breeding_slots
+		_status_label.text = "产房升级成功！当前坑位：%d。" % _game_state.max_breeding_slots
 		refresh()
 	else:
-		_status_label.text = "Cannot upgrade the nursery right now."
+		_status_label.text = "升级失败（金币不足）。"
 
 func _collect_breedable_cats() -> Array:
 	if _game_state == null:
 		return []
 	if _game_state.has_method("get_breedable_cats"):
-		return _game_state.get_breedable_cats()
+		var raw = _game_state.get_breedable_cats()
+		var result: Array = []
+		result.assign(raw)
+		return result
 	var result: Array = []
 	for cat in _game_state.cats:
 		if cat == null:

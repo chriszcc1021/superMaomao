@@ -242,6 +242,13 @@ func _show_building_preview(building_id: String) -> void:
 		lines.append("")
 		lines.append("💡 目前金币：%d" % _game_state.coins)
 	_set_sidebar_text("\n".join(lines))
+	# 建造按钮
+	var can_afford: bool = _game_state.coins >= cost
+	_add_action_button(
+		"🔨 建造 %s（-%d金）" % [_building_display_name(building_id), cost],
+		_on_build_building.bind(building_id),
+		can_afford
+	)
 
 func _refresh_cat_nodes() -> void:
 	for child: Node in _cats_root.get_children():
@@ -470,6 +477,17 @@ func _on_bury_all_dead_cats() -> void:
 	if not biographies.is_empty():
 		_set_sidebar_text("\n\n".join(biographies))
 	_refresh_all()
+
+func _on_build_building(building_id: String) -> void:
+	if _game_state == null:
+		return
+	var ok: bool = _game_state.build_building(building_id)
+	if ok:
+		_spawn_buildings()  # 刷新建筑外观（半透明→正常）
+		_refresh_all()
+		_show_building_sidebar(building_id)
+	else:
+		_set_sidebar_text("❌ 建造失败（金币不足或已建造）")
 
 func _on_upgrade_building(building_id: String) -> void:
 	if _game_state == null:

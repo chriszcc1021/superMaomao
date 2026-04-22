@@ -357,6 +357,16 @@ func _opposite_sex(value: String) -> String:
 # ─── 建筑升级 ─────────────────────────────────────────────────────────────────
 
 ## 返回升级是否成功
+## 建造一个新建筑。成功返回 true，失败返回 false。
+func build_building(building_id: String) -> bool:
+	if has_building(building_id):
+		return false  # 已建造
+	var cost: int = int(GameConstants.BUILDING_COSTS.get(building_id, 0))
+	if cost > 0 and not spend_coins(cost):
+		return false
+	set_building_state(building_id, true)
+	return true
+
 func upgrade_building(building_id: String) -> bool:
 	match building_id:
 		"cat_house":
