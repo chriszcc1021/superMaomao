@@ -35,7 +35,7 @@ layout_mode = 2
 
 [node name="OpenExpeditionButton" type="Button" parent="UI/SidePanel/VBox"]
 layout_mode = 2
-text = "杩滃緛"
+text = "远征"
 
 [node name="CatListUI" parent="UI" instance=ExtResource("3")]
 
@@ -50,21 +50,21 @@ layout_mode = 2
 
 [node name="StrayLabel" type="Label" parent="UI/StrayNotification/VBox"]
 layout_mode = 2
-text = "鏆傛棤娴佹氮鐚€?"
+text = "暂无流浪猫..."
 
 [node name="Buttons" type="HBoxContainer" parent="UI/StrayNotification/VBox"]
 layout_mode = 2
 
 [node name="AcceptButton" type="Button" parent="UI/StrayNotification/VBox/Buttons"]
 layout_mode = 2
-text = "鎺ユ敹"
+text = "接受"
 
 [node name="RejectButton" type="Button" parent="UI/StrayNotification/VBox/Buttons"]
 layout_mode = 2
-text = "鎷掔粷"
+text = "拒绝"
 
 [node name="DeferButton" type="Button" parent="UI/StrayNotification/VBox/Buttons"]
 layout_mode = 2
-text = "鏆傜紦1澶?"
+text = "延后"
 
 [node name="BreedingUI" parent="UI" instance=ExtResource("4")]

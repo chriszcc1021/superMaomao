@@ -138,7 +138,7 @@ func _refresh_time_label() -> void:
 		return
 	var time_label: String = str(_time_manager.get_time_label())
 	var paused_tag: String = " ⏸" if bool(_time_manager.time_paused) else ""
-	_day_label.text = "第%d天 %s%s" % [int(_time_manager.total_days) + 1, time_label, paused_tag]
+	_day_label.text = "第%d天 %s%s" % [_game_state.camp_day, time_label, paused_tag]
 
 func _bind_signals() -> void:
 	if not _next_day_button.pressed.is_connected(_on_next_day_pressed):
@@ -696,6 +696,12 @@ func _refresh_hud() -> void:
 	_coins_label.text = "金币: %d" % _game_state.coins
 	_food_label.text = "猫粮: %d/%d" % [_game_state.cat_food, _game_state.cat_food_cap]
 	_refresh_time_label()
+	# 速度按钮防丢失：如果引用失效则重建
+	if not is_instance_valid(_speed_btn):
+		_speed_btn = null
+		_create_speed_button()
+	elif _time_manager != null:
+		_speed_btn.text = "%g×" % _time_manager.time_speed
 
 func _refresh_cat_list() -> void:
 	var lines: PackedStringArray = []
