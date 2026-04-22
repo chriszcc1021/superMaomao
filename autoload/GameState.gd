@@ -282,6 +282,8 @@ func get_expedition_block_reason(cat: CatData) -> String:
 		return "这只猫已经不可用。"
 	if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
 		return "这只猫已经在远征中。"
+	if cat.has_expeditioned:
+		return "这只猫已经远征过了，一生限一次。"
 	if cat.health != GameConstants.HEALTH_STATE_HEALTHY:
 		return "只有健康状态的猫可以出征。"
 	if is_cat_breeding(cat):
