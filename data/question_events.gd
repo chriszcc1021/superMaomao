@@ -306,9 +306,9 @@ static func get_all_events() -> Array[Dictionary]:
 				},
 				{
 					"label": "🚪 义正言辞离开",
-					"desc": "获得 buff「自律」：每场战斗开始时回 5 点 HP",
+					"desc": "获得 buff「自律」：每场战斗开始时回 5% HP",
 					"effects": [
-						{"type": "buff_regen_per_battle", "value": 5, "label": "每场战斗开始回 5HP"},
+						{"type": "buff_regen_per_battle", "value": 0.05, "label": "每场战斗开始回 5% HP"},
 					]
 				},
 			]

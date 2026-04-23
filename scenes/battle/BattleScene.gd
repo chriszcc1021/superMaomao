@@ -168,18 +168,19 @@ func _apply_expedition_buffs() -> void:
 				_dmg_taken_modifier = 1.0 + value
 				consume_list.append(buff)
 			"immediate_hp_restore_pct":
-				# 立即回血
-				_player_cat.heal(value)
+				# 立即按最大HP百分比回血（value=0.25 → 回25%HP）
+				_player_cat.heal(_player_cat.max_hp * value)
 				consume_list.append(buff)
 			"immediate_hp_cost_pct":
-				# 立即扣血（但不致死）
-				if _player_cat.has_method("take_damage_pct"):
-					_player_cat.take_damage_pct(value)
+				# 立即按最大HP百分比扣血（不致死，最低保留1HP）
+				var dmg := _player_cat.max_hp * value
+				var safe_dmg := minf(dmg, _player_cat.current_hp - 1.0)
+				if safe_dmg > 0.0:
+					_player_cat.take_damage(safe_dmg)
 				consume_list.append(buff)
 			"regen_per_battle":
-				# 立即加血（每场战斗）
-				if _player_cat.has_method("heal"):
-					_player_cat.heal(value)
+				# 每场战斗开始回 N% HP（value=0.05 → 回5%HP）
+				_player_cat.heal(_player_cat.max_hp * value)
 			"grant_card_on_battle_start":
 				_grant_bonus_card()
 				consume_list.append(buff)

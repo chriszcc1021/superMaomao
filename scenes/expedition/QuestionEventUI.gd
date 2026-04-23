@@ -242,7 +242,7 @@ func _apply_effect(effect: Dictionary, game_state: Node) -> String:
 
 		"buff_regen_per_battle":
 			_add_expedition_buff(game_state, "regen_per_battle", value)
-			return "每场战斗开始回 %d HP" % int(value)
+			return "每场战斗开始回 %d%% HP" % int(value * 100)
 
 		"buff_immunity_next_debuff":
 			_add_expedition_buff(game_state, "immunity_next_debuff", 1.0)
