@@ -82,14 +82,19 @@ func setup(data: CatData, enemies_root: Node2D) -> void:
 	collision_layer = 1
 	collision_mask = 0
 	cat_data.calculate_stats()
-	base_max_hp = _initial_hp_for_breed(cat_data.breed)
+	# Model B：使用 CatData.base_hp（基因+职业计算值），不再用 BATTLE_PLAYER_HP_BY_BREED
+	base_max_hp = cat_data.base_hp if cat_data.base_hp > 0.0 else 50.0
 	base_attack = cat_data.base_attack
 	base_move_speed = cat_data.base_move_speed
 	base_range = cat_data.base_range
 	base_crit_rate = cat_data.base_crit_rate
 	base_crit_multiplier = cat_data.base_crit_multiplier
 	_recalculate_runtime_stats()
-	current_hp = max_hp
+	# 继承血量：cat_data.current_hp >= 0 时从上场战斗继承，否则满血开始
+	if cat_data.current_hp >= 0.0:
+		current_hp = clampf(cat_data.current_hp, 1.0, max_hp)
+	else:
+		current_hp = max_hp
 	hp_changed.emit(current_hp, max_hp)
 	queue_redraw()
 

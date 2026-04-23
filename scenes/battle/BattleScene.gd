@@ -655,9 +655,12 @@ func _finish_battle(victory: bool) -> void:
 	_player_cat.set_battle_paused(true)
 	_spawn_manager.set_battle_paused(true)
 
-	# 将本场战斗的等级写回猫的持久数据；小鱼干不写回（局内消耗品）
+	# 将本场战斗的等级和继承血量写回猫的持久数据；小鱼干不写回（局内消耗品）
 	if _selected_cat_source != null:
 		_selected_cat_source.level = _level
+		# Model B：写回当前血量，供下一场战斗继承
+		if _player_cat != null and is_instance_valid(_player_cat):
+			_selected_cat_source.current_hp = _player_cat.current_hp
 		# _selected_cat_source.xp = _fish  ← 移除：小鱼干战斗后消失（设计文档§3.1）
 
 	var event_bus := _get_event_bus()

@@ -321,6 +321,8 @@ func start_expedition(cat: CatData) -> bool:
 	expedition_active_genes.clear()
 	expedition_shop_cards.clear()
 	cat.status = GameConstants.LIFECYCLE_STATUS_EXPEDITION
+	# Model B：远征开始时重置继承血量（满血出发）
+	cat.current_hp = -1.0
 	return true
 
 func record_expedition_battle_result(result: Dictionary) -> void:

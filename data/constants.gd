@@ -123,36 +123,36 @@ const GRANARY_FOOD_CAP_BY_LEVEL := {1: 200, 2: 400, 3: 700, 4: 1200, 5: 2000}
 
 const PROFESSION_BASE := {
 	"sniper": {
-		"attack": 70.0,
-		"defense": 18.0,
+		"attack": 25.0,   # 校准：70→25，降低起始单体攻击
+		"defense": 5.0,
 		"speed": 115.0,
 		"attack_speed": 0.8,
 		"range": 6.0,
-		"hp": 120.0
+		"hp": 15.0        # 校准：120→15
 	},
 	"aoe": {
-		"attack": 40.0,
-		"defense": 22.0,
+		"attack": 16.0,   # 校准：40→16
+		"defense": 8.0,
 		"speed": 105.0,
 		"attack_speed": 1.2,
 		"range": 4.0,
-		"hp": 150.0
+		"hp": 25.0        # 校准：150→25
 	},
 	"control": {
-		"attack": 25.0,
-		"defense": 16.0,
+		"attack": 10.0,   # 校准：25→10
+		"defense": 5.0,
 		"speed": 110.0,
 		"attack_speed": 1.0,
 		"range": 5.0,
-		"hp": 100.0
+		"hp": 10.0        # 校准：100→10
 	},
 	"support": {
-		"attack": 20.0,
-		"defense": 20.0,
+		"attack": 8.0,    # 校准：20→8
+		"defense": 8.0,
 		"speed": 108.0,
 		"attack_speed": 1.0,
 		"range": 4.0,
-		"hp": 130.0
+		"hp": 20.0        # 校准：130→20
 	}
 }
 
@@ -235,11 +235,11 @@ const APPEARANCE_GENE_OPTIONS := {
 	"tail": ["long", "short", "curl", "bobtail"]
 }
 
-const HEAD_HP := {"round": 200.0, "sharp": 130.0, "wide": 300.0}
+const HEAD_HP := {"round": 50.0, "sharp": 35.0, "wide": 70.0}  # 校准：起始小，成长有意义
 const EAR_RANGE := {"upright": 3.0, "fold": 2.0, "big": 4.0, "hairless": 2.5}
 const EYE_COLOR_CRIT := {"blue": 0.05, "green": 0.10, "amber": 0.18}
 const EYE_SHAPE_CRIT_MULT := {"round": 1.5, "narrow": 2.2}
-const FUR_MAIN_ATTACK := {"orange": 12.0, "black": 16.0, "white": 9.0, "gray": 11.0}
+const FUR_MAIN_ATTACK := {"orange": 5.0, "black": 7.0, "white": 4.0, "gray": 5.0}  # 校准：降低起始攻击
 const FUR_ACCENT_GOLD_MULT := {"white": 1.1, "tan": 1.2, "none": 1.0}
 const TAIL_ATTACK_SPEED := {"long": 0.8, "short": 1.4, "curl": 1.1, "bobtail": 1.0}
 

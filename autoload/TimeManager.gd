@@ -278,6 +278,7 @@ func _serialize_cat(cat: CatData) -> Dictionary:
 		"assigned_building": cat.assigned_building,
 		"level": cat.level,
 		"xp": cat.xp,
+		"current_hp": cat.current_hp,
 		"gene_head": cat.gene_head,
 		"gene_ear": cat.gene_ear,
 		"gene_eye_color": cat.gene_eye_color,
@@ -344,6 +345,7 @@ func _deserialize_cat(data: Dictionary) -> CatData:
 	cat.assigned_building = str(data.get("assigned_building", ""))
 	cat.level = int(data.get("level", 1))
 	cat.xp = int(data.get("xp", 0))
+	cat.current_hp = float(data.get("current_hp", -1.0))
 	cat.gene_head = str(data.get("gene_head", "round"))
 	cat.gene_ear = str(data.get("gene_ear", "upright"))
 	cat.gene_eye_color = str(data.get("gene_eye_color", "blue"))

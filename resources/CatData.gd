@@ -20,6 +20,9 @@ const GameConstants := preload("res://data/constants.gd")
 @export var level: int = 1
 @export var xp: int = 0  # 当前等级内已积累 XP（满则升级归零）
 
+# 继承血量（Model B）：-1 = 战斗开始时取满血；远征中跨战斗继承
+@export var current_hp: float = -1.0
+
 @export var gene_head: String = "round"
 @export var gene_ear: String = "upright"
 @export var gene_eye_color: String = "blue"
