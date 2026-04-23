@@ -173,8 +173,8 @@ func _apply_expedition_buffs() -> void:
 				consume_list.append(buff)
 			"immediate_hp_cost_pct":
 				# 立即按最大HP百分比扣血（不致死，最低保留1HP）
-				var dmg := _player_cat.max_hp * value
-				var safe_dmg := minf(dmg, _player_cat.current_hp - 1.0)
+				var dmg: float = float(_player_cat.max_hp) * value
+				var safe_dmg: float = minf(dmg, float(_player_cat.current_hp) - 1.0)
 				if safe_dmg > 0.0:
 					_player_cat.take_damage(safe_dmg)
 				consume_list.append(buff)
