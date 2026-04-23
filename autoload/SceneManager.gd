@@ -4,10 +4,12 @@ const CAMP_SCENE_PATH := "res://scenes/camp/CampScene.tscn"
 const EXPEDITION_MAP_SCENE_PATH := "res://scenes/expedition/ExpeditionMapUI.tscn"
 const BATTLE_SCENE_PATH := "res://scenes/battle/BattleScene.tscn"
 const SHOP_SCENE_PATH := "res://scenes/expedition/ShopScene.tscn"
+const EXPEDITION_RESULT_SCENE_PATH := "res://scenes/expedition/ExpeditionResultScene.tscn"
 
 var last_battle_node_type: String = ""
 var last_battle_result: Dictionary = {}
 var returned_from_shop: bool = false
+var expedition_result_data: Dictionary = {}  # 供 ExpeditionResultScene 读取
 
 func go_to_camp() -> void:
 	get_tree().call_deferred("change_scene_to_file", CAMP_SCENE_PATH)
@@ -33,3 +35,7 @@ func return_from_battle(result: Dictionary) -> void:
 func return_from_shop() -> void:
 	returned_from_shop = true
 	go_to_expedition_map()
+
+func go_to_expedition_result(data: Dictionary) -> void:
+	expedition_result_data = data.duplicate(true)
+	get_tree().call_deferred("change_scene_to_file", EXPEDITION_RESULT_SCENE_PATH)

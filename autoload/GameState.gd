@@ -333,6 +333,12 @@ func add_expedition_buff(buff_id: String) -> void:
 		return
 	expedition_buffs.append(buff_id)
 
+## 新版：以字典格式存储 buff，供 BattleScene 应用
+func add_expedition_buff_dict(buff: Dictionary) -> void:
+	if buff.is_empty():
+		return
+	expedition_buffs.append(buff)
+
 func add_expedition_active_gene(gene_id: String) -> void:
 	if gene_id.is_empty():
 		return

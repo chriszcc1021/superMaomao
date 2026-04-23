@@ -21,6 +21,7 @@ Preloader="*res://autoload/Preloader.gd"
 GameState="*res://autoload/GameState.gd"
 SceneManager="*res://autoload/SceneManager.gd"
 EventBus="*res://autoload/EventBus.gd"
+AutoTest="*res://autoload/AutoTest.gd"
 TimeManager="*res://autoload/TimeManager.gd"
 
 [display]

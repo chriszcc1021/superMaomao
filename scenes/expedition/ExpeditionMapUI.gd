@@ -1,9 +1,11 @@
 extends Control
 
-const ExpeditionSystem := preload("res://scenes/expedition/ExpeditionSystem.gd")
-const CatData          := preload("res://resources/CatData.gd")
-const GameConsts       := preload("res://data/constants.gd")
-const CAMP_SCENE_PATH  := "res://scenes/camp/CampScene.tscn"
+const ExpeditionSystem  := preload("res://scenes/expedition/ExpeditionSystem.gd")
+const QuestionEventUIScene := preload("res://scenes/expedition/QuestionEventUI.tscn")
+const QuestionEvents    := preload("res://data/question_events.gd")
+const CatData           := preload("res://resources/CatData.gd")
+const GameConsts        := preload("res://data/constants.gd")
+const CAMP_SCENE_PATH   := "res://scenes/camp/CampScene.tscn"
 @onready var _cat_option: OptionButton = $Panel/VBox/SetupRow/CatOption
 @onready var _start_button: Button = $Panel/VBox/SetupRow/StartButton
 @onready var _back_button: Button = $Panel/VBox/SetupRow/BackToCampButton
@@ -169,8 +171,8 @@ func _on_node_pressed(idx: int) -> void:
 			if scene_manager != null:
 				scene_manager.go_to_battle(node_type)
 		"event_question":
-			_status_label.text = _system.resolve_question_event(game_state)
-			_advance_non_battle_layer()
+			_show_question_event()
+			return  # 等待玩家选择，不立即推层
 		"shop":
 			var scene_manager := _get_scene_manager()
 			if scene_manager != null:
@@ -189,10 +191,48 @@ func _advance_non_battle_layer() -> void:
 	_generate_nodes_for_current_layer()
 	_refresh_view()
 
+## 奇遇：弹出选择 UI
+func _show_question_event() -> void:
+	var event_data := QuestionEvents.get_random_event()
+	var ui: Control = QuestionEventUIScene.instantiate()
+	add_child(ui)
+	ui.setup(event_data)
+	# 等待玩家选择完毕后推层
+	ui.choice_made.connect(func(_effects): _advance_non_battle_layer(), CONNECT_ONE_SHOT)
+
 func _finish_expedition(success: bool, result: Dictionary = {}) -> void:
-	var reward := _system.finish_expedition(_get_game_state(), _get_event_bus(), success, result.get("battle_result", {}))
-	_status_label.text = "远征结束，获得金币：%d。" % reward
-	_go_to_camp()
+	var game_state := _get_game_state()
+	# 收集结算数据（clear_expedition_state 之前）
+	var cat := _find_expedition_cat(game_state)
+	var level_from: int = int(cat.level) if cat else 1
+	var active_genes_gained: Array = []
+	if game_state:
+		for g: String in game_state.expedition_active_genes:
+			active_genes_gained.append(g)
+	var battle_result: Dictionary = result.get("battle_result", {})
+	var cat_retired: bool = bool(battle_result.get("cat_retired", false))
+	var layers: int = int(game_state.expedition_layer) if game_state else 0
+	var wins: int = int(game_state.expedition_battle_wins) if game_state else 0
+	# 执行结算逻辑（写金币、清状态）
+	var reward := _system.finish_expedition(game_state, _get_event_bus(), success, battle_result)
+	# 组装结算数据传给结算场景
+	var result_data := {
+		"success": success,
+		"cat_retired": cat_retired,
+		"cat_name": cat.cat_name if cat else "猫咪",
+		"profession_zh": GameConsts.profession_zh(cat.profession) if cat else "",
+		"level_from": level_from,
+		"level_to": cat.level if cat else level_from,
+		"layers_reached": layers,
+		"battle_wins": wins,
+		"reward": reward,
+		"active_genes": active_genes_gained,
+	}
+	var scene_manager := _get_scene_manager()
+	if scene_manager and scene_manager.has_method("go_to_expedition_result"):
+		scene_manager.go_to_expedition_result(result_data)
+	else:
+		_go_to_camp()
 
 func _selected_cat() -> CatData:
 	if _eligible_cats.is_empty():
