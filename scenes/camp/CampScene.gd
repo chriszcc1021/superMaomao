@@ -6,7 +6,8 @@ const FloatingTextScript := preload("res://scenes/common/FloatingText.gd")
 
 const CatSpriteScene := preload("res://scenes/common/CatSprite.tscn")
 const DayManagerScript := preload("res://scenes/camp/DayManager.gd")
-const StarterCatPreviewScript := preload("res://scenes/camp/ui/StarterCatPreview.gd")
+const CampDaySummaryScript := preload("res://scenes/camp/CampDaySummary.gd")
+const StarterOverlayControllerScript := preload("res://scenes/camp/ui/StarterOverlayController.gd")
 
 const BUILDING_SCENES := {
 	"cat_house": preload("res://scenes/camp/buildings/CatHouse.tscn"),
@@ -62,14 +63,12 @@ var _is_night: bool = false
 var _game_state: Node = null
 var _event_bus: Node = null
 var _day_manager: RefCounted = DayManagerScript.new()
+var _day_summary = CampDaySummaryScript.new()
 var _speed_btn: Button = null  # 动态创建的速度切换按钮
 
 var _starter_overlay: Control = null
-var _starter_hint_label: Label = null
+var _starter_overlay_controller = null
 var _starter_choice_buttons: Array[Button] = []
-var _starter_previews: Array[Control] = []
-var _starter_info_labels: Array[Label] = []
-var _starter_overlay_paused_time: bool = false
 var _expedition_summary_dialog: AcceptDialog = null
 var _cat_visual_positions: Dictionary = {}
 var _cat_building_anchors: Dictionary = {}
@@ -903,145 +902,25 @@ func _show_pending_expedition_summary() -> void:
 		_expedition_summary_dialog.popup_centered(Vector2i(460, 220))
 
 func _build_starter_overlay() -> void:
-	if _starter_overlay != null:
+	if _starter_overlay_controller != null:
 		return
-
-	# ── 全屏半透明遮罩 ──
-	var overlay := ColorRect.new()
-	overlay.name = "StarterOverlay"
-	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	overlay.color = Color(0.04, 0.06, 0.10, 0.90)
-	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-
-	# ── 中央主面板 ──
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(980.0, 500.0)
-	panel.anchor_left = 0.5
-	panel.anchor_top = 0.5
-	panel.anchor_right = 0.5
-	panel.anchor_bottom = 0.5
-	panel.offset_left = -490.0
-	panel.offset_top = -250.0
-	panel.offset_right = 490.0
-	panel.offset_bottom = 250.0
-	overlay.add_child(panel)
-
-	var root := VBoxContainer.new()
-	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	root.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_theme_constant_override("separation", 16)
-	panel.add_child(root)
-
-	# ── 标题 ──
-	var title := Label.new()
-	title.text = "✦ 选择你的第一只猫 ✦"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 22)
-	root.add_child(title)
-
-	# ── 副标题 ──
-	var hint := Label.new()
-	hint.text = "从三只候选猫中选一只。选完后，一只异性流浪猫将很快到访营地。"
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.add_theme_color_override("font_color", Color(0.78, 0.78, 0.78))
-	root.add_child(hint)
-	_starter_hint_label = hint
-
-	# ── 三张卡片横排 ──
-	var choices := HBoxContainer.new()
-	choices.alignment = BoxContainer.ALIGNMENT_CENTER
-	choices.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	choices.add_theme_constant_override("separation", 20)
-	root.add_child(choices)
-
-	for index in GameConstants.STARTER_CHOICE_COUNT:
-		var card := _build_starter_card(index)
-		choices.add_child(card)
-
-	_ui_layer.add_child(overlay)
-	_starter_overlay = overlay
-
-func _build_starter_card(index: int) -> PanelContainer:
-	# ── 卡片外框 ──
-	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(280.0, 390.0)
-	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
-
-	var inner := VBoxContainer.new()
-	inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	inner.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	inner.add_theme_constant_override("separation", 8)
-	card.add_child(inner)
-
-	# ── 猫咪外观预览（占据约一半高度） ──
-	var preview: Control = StarterCatPreviewScript.new()
-	preview.custom_minimum_size = Vector2(280.0, 170.0)
-	preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	inner.add_child(preview)
-	_starter_previews.append(preview)
-
-	# ── 猫咪信息标签 ──
-	var info := Label.new()
-	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	@warning_ignore("int_as_enum_without_cast")
-	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	info.add_theme_font_size_override("font_size", 13)
-	inner.add_child(info)
-	_starter_info_labels.append(info)
-
-	# ── 选择按钮 ──
-	var btn := Button.new()
-	btn.text = "选择此猫"
-	btn.custom_minimum_size = Vector2(0.0, 40.0)
-	btn.pressed.connect(_on_starter_choice_pressed.bind(index))
-	inner.add_child(btn)
-	_starter_choice_buttons.append(btn)
-
-	return card
+	_starter_overlay_controller = StarterOverlayControllerScript.new()
+	_starter_overlay_controller.starter_choice_pressed.connect(_on_starter_choice_pressed)
+	add_child(_starter_overlay_controller)
+	_starter_overlay_controller.setup(_ui_layer, _game_state, _time_manager)
+	_sync_starter_overlay_refs()
 
 func _refresh_starter_overlay() -> void:
-	if _starter_overlay == null or _game_state == null:
+	if _starter_overlay_controller == null:
 		return
-	var needs_choice: bool = bool(_game_state.starter_selection_pending)
-	_starter_overlay.visible = needs_choice
-	if not needs_choice:
-		if _starter_overlay_paused_time and _time_manager != null and bool(_time_manager.time_paused):
-			_time_manager.resume()
-		_starter_overlay_paused_time = false
+	_starter_overlay_controller.refresh()
+	_sync_starter_overlay_refs()
+
+func _sync_starter_overlay_refs() -> void:
+	if _starter_overlay_controller == null:
 		return
-
-	if _time_manager != null and not bool(_time_manager.time_paused):
-		_time_manager.pause()
-		_starter_overlay_paused_time = true
-
-	var candidates: Array = _game_state.starter_candidates
-	for index in _starter_choice_buttons.size():
-		var btn := _starter_choice_buttons[index]
-		var has_cat: bool = index < candidates.size()
-		btn.disabled = not has_cat
-		# 更新预览和信息标签
-		if index < _starter_previews.size():
-			var preview: Control = _starter_previews[index]
-			if preview.has_method("setup"):
-				preview.call("setup", candidates[index] if has_cat else null)
-		if index < _starter_info_labels.size():
-			var lbl: Label = _starter_info_labels[index]
-			lbl.text = _starter_card_info_text(candidates[index]) if has_cat else ""
-
-func _starter_card_info_text(cat: CatData) -> String:
-	var gene_names: PackedStringArray = []
-	for gene_id: String in cat.get_special_genes():
-		var gene_info: Dictionary = GameConstants.GENE_DISPLAY_ZH.get(gene_id, {})
-		var gene_name: String = str(gene_info.get("name", gene_id))
-		gene_names.append(gene_name)
-	var trait_text := "、".join(gene_names) if not gene_names.is_empty() else "无"
-	return (
-		"%s\n" % cat.cat_name
-		+ "%s  %s  %s\n" % [GameConstants.sex_display(cat.sex), GameConstants.profession_zh(cat.profession), GameConstants.breed_zh(cat.breed)]
-		+ "生命 %.0f  攻击 %.0f\n" % [cat.base_hp, cat.base_attack]
-		+ "射程 %.1f  攻速 %.2f/s\n" % [cat.base_range, cat.base_attack_speed]
-		+ "特性：%s" % trait_text
-	)
+	_starter_overlay = _starter_overlay_controller.get_overlay()
+	_starter_choice_buttons = _starter_overlay_controller.choice_buttons
 
 func _on_starter_choice_pressed(index: int) -> void:
 	var chosen: CatData = _game_state.choose_starter_cat(index)
@@ -1058,65 +937,7 @@ func _on_starter_choice_pressed(index: int) -> void:
 
 # ── 日结算（手动推进）：快照 → advance_day → 对比 → 返回事件日志 ──────────────
 func _run_day_advance() -> String:
-	if _game_state == null:
-		return ""
-	# 快照
-	var snap_coins: int = _game_state.coins
-	var snap_food: int = _game_state.cat_food
-	var snap_queue: int = _game_state.stray_cat_queue.size()
-	var snap_cat_ids: Dictionary = {}  # id → true，用于检测新生猫
-	var snap_health: Dictionary = {}
-	var snap_status: Dictionary = {}
-	for cat in _game_state.cats:
-		if cat == null:
-			continue
-		snap_cat_ids[cat.id] = true
-		snap_health[cat.id] = cat.health
-		snap_status[cat.id] = cat.status
-
-	# 执行结算
-	_day_manager.advance_day(_game_state, _event_bus)
-
-	# 对比生成事件列表
-	var events: Array[String] = []
-	var food_delta: int = _game_state.cat_food - snap_food
-	var coins_delta: int = _game_state.coins - snap_coins
-
-	if food_delta > 0:
-		events.append("🌾 猫粮 +%d → %d/%d" % [food_delta, _game_state.cat_food, _game_state.cat_food_cap])
-	elif _game_state.cat_food == 0 and snap_food > 0:
-		events.append("⚠️ 猫粮耗尽！猫咪开始生病")
-	else:
-		events.append("🍽️ 猫粮 %d → %d/%d" % [snap_food, _game_state.cat_food, _game_state.cat_food_cap])
-
-	if coins_delta > 0:
-		events.append("💰 金币 +%d → %d" % [coins_delta, _game_state.coins])
-
-	for cat in _game_state.cats:
-		if cat == null:
-			continue
-		# 新生猫
-		if not snap_cat_ids.has(cat.id):
-			events.append("🐣 %s 出生了！" % cat.cat_name)
-			continue
-		var old_h: String = str(snap_health.get(cat.id, GameConstants.HEALTH_STATE_HEALTHY))
-		var old_s: String = str(snap_status.get(cat.id, GameConstants.LIFECYCLE_STATUS_IDLE))
-		if old_h == GameConstants.HEALTH_STATE_HEALTHY and cat.health == GameConstants.HEALTH_STATE_SICK:
-			events.append("🤒 %s 生病了！" % cat.cat_name)
-		elif old_h == GameConstants.HEALTH_STATE_SICK and cat.health == GameConstants.HEALTH_STATE_CRITICAL:
-			events.append("🆘 %s 病危！需要送医" % cat.cat_name)
-		if old_s != GameConstants.LIFECYCLE_STATUS_ELDER and cat.status == GameConstants.LIFECYCLE_STATUS_ELDER:
-			events.append("👴 %s 步入老年期" % cat.cat_name)
-		if old_s != GameConstants.LIFECYCLE_STATUS_DEAD and cat.status == GameConstants.LIFECYCLE_STATUS_DEAD:
-			events.append("💀 %s 离世了" % cat.cat_name)
-
-	if _game_state.stray_cat_queue.size() > snap_queue:
-		events.append("🐱 有流浪猫到访！")
-
-	var day: int = _game_state.camp_day
-	var header := "─── 第%d天 结算 ───" % day
-	var body := "\n".join(events) if not events.is_empty() else "一切平静。"
-	return "%s\n%s" % [header, body]
+	return _day_summary.run(_game_state, _event_bus, _day_manager)
 
 # ── 速度切换按钮（动态创建，加在 NextDayButton 旁边）────────────────────────
 func _create_speed_button() -> void:
