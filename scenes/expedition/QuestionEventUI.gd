@@ -3,6 +3,7 @@ extends Control
 
 const QuestionEvents := preload("res://data/question_events.gd")
 const CatFactory     := preload("res://data/cat_factory.gd")
+const UISkin         := preload("res://scenes/common/UISkin.gd")
 
 ## 选择完成后发出：传出已选效果列表，供调用方处理
 signal choice_made(effects: Array)
@@ -14,7 +15,10 @@ var _confirm_btn: Button = null
 var _pending_effects: Array = []
 
 func _ready() -> void:
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_build_ui()
+	_refresh_ui()
 
 func setup(event_data: Dictionary) -> void:
 	_event_data = event_data
@@ -28,8 +32,8 @@ func _build_ui() -> void:
 	anchor_bottom = 1.0
 	var bg := ColorRect.new()
 	bg.color = Color(0.0, 0.0, 0.0, 0.72)
-	bg.anchor_right = 1.0
-	bg.anchor_bottom = 1.0
+	bg.mouse_filter = Control.MOUSE_FILTER_STOP
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
 	# 中央面板
@@ -43,10 +47,13 @@ func _build_ui() -> void:
 	panel.offset_top = -230
 	panel.offset_right = 340
 	panel.offset_bottom = 230
+	UISkin.apply_panel(panel)
 	add_child(panel)
 
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 16)
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.add_child(vbox)
 
 	# 标题行
@@ -66,6 +73,7 @@ func _build_ui() -> void:
 	var title_label := Label.new()
 	title_label.name = "TitleLabel"
 	title_label.add_theme_font_size_override("font_size", 24)
+	UISkin.apply_label(title_label)
 	title_row.add_child(title_label)
 
 	# 分割线
@@ -78,7 +86,7 @@ func _build_ui() -> void:
 	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	desc_label.add_theme_font_size_override("font_size", 15)
-	desc_label.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
+	UISkin.apply_label(desc_label)
 	vbox.add_child(desc_label)
 
 	# 选项容器
@@ -93,7 +101,7 @@ func _build_ui() -> void:
 	_result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_result_label.add_theme_font_size_override("font_size", 16)
-	_result_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.4))
+	_result_label.add_theme_color_override("font_color", Color(0.42, 0.24, 0.08))
 	_result_label.visible = false
 	vbox.add_child(_result_label)
 
@@ -102,6 +110,7 @@ func _build_ui() -> void:
 	_confirm_btn.text = "继续前行"
 	_confirm_btn.custom_minimum_size = Vector2(160, 44)
 	_confirm_btn.visible = false
+	UISkin.apply_button(_confirm_btn, Color(0.58, 0.74, 0.38, 1.0))
 	_confirm_btn.pressed.connect(_on_confirm_pressed)
 	vbox.add_child(_confirm_btn)
 
@@ -144,6 +153,7 @@ func _build_choice_button(choice: Dictionary, idx: int) -> Button:
 	btn.custom_minimum_size = Vector2(0, 54)
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	btn.add_theme_font_size_override("font_size", 14)
+	UISkin.apply_button(btn, Color(0.82, 0.65, 0.42, 1.0))
 	btn.pressed.connect(_on_choice_pressed.bind(idx))
 	return btn
 

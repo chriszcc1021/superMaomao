@@ -229,6 +229,7 @@ func _show_question_event() -> void:
 	var event_data := QuestionEvents.get_random_event()
 	var ui: Control = QuestionEventUIScene.instantiate()
 	add_child(ui)
+	ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	ui.setup(event_data)
 	# 等待玩家选择完毕后推层
 	ui.choice_made.connect(func(_effects): _advance_non_battle_layer(), CONNECT_ONE_SHOT)
