@@ -305,7 +305,7 @@ const GENE_RARITY_WEIGHT := {"grey": 3, "green": 2, "blue": 1}
 
 # 猫永久等级系统
 const CAT_LEVEL_CAP := 100
-const GENE_LEVEL_INTERVAL := 10  # 每10级选一次技能基因
+const GENE_CHOICE_LEVELS := [5, 10, 15]
 const CAT_XP_BASE := 150         # 每级所需 XP 基础值
 const CAT_XP_INCREMENT := 2      # 每级额外增加的 XP
 
@@ -403,8 +403,6 @@ const BATTLE_OPENING_WAVES := [
 	{"time": 10.0, "small_monkey": 3, "stone_monkey": 2}
 ]
 
-const LEVEL_UP_XP := [5, 15, 25, 35, 45]
-const LEVEL_UP_XP_INCREMENT_AFTER_TABLE := 15
 const FIRST_LEVEL_WEAPON_ONLY := true
 
 const ENEMY_FISH_DROP := {

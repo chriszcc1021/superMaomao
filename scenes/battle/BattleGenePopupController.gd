@@ -41,8 +41,9 @@ func show_choice(parent: Node, cat_name: String, level: int, gene_choices: Array
 		var type_tag := "[主动]" if is_active else "[被动]"
 		var btn := Button.new()
 		btn.text = "%s【%s】%s\n%s" % [str(info.get("name", gene_id)), rarity_zh, type_tag, str(info.get("desc", ""))]
+		btn.clip_text = true
 		@warning_ignore("int_as_enum_without_cast")
-		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		btn.custom_minimum_size = Vector2(0.0, 60.0)
 		btn.pressed.connect(chosen_callback.bind(gene_id))
 		vb.add_child(btn)
@@ -82,10 +83,12 @@ func show_replace(
 		var slot_info: Dictionary = GameConstants.GENE_DISPLAY_ZH.get(slot_gene, {"name": slot_gene})
 		var btn := Button.new()
 		btn.text = "替换 槽%d：「%s」" % [slot_idx + 1, str(slot_info.get("name", slot_gene))]
+		btn.clip_text = true
 		btn.pressed.connect(replace_callback.bind(slot_idx, new_gene_id))
 		vb.add_child(btn)
 
 	var abandon_btn := Button.new()
 	abandon_btn.text = "放弃「%s」" % str(info.get("name", new_gene_id))
+	abandon_btn.clip_text = true
 	abandon_btn.pressed.connect(abandon_callback)
 	vb.add_child(abandon_btn)

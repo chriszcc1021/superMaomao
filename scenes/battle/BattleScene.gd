@@ -261,8 +261,7 @@ func _on_level_up() -> void:
 	var first_level_up := _level == 2 and GameConstants.FIRST_LEVEL_WEAPON_ONLY
 	var choices := _roll_cards(first_level_up)
 
-	# 每 GENE_LEVEL_INTERVAL 级触发技能基因选择
-	if _level % GameConstants.GENE_LEVEL_INTERVAL == 0:
+	if GameConstants.GENE_CHOICE_LEVELS.has(_level):
 		_pending_card_choices = choices
 		_pending_first_level_up = first_level_up
 		_show_gene_choice_popup()
@@ -360,8 +359,11 @@ func _close_gene_popup_and_continue() -> void:
 		_gene_popup.queue_free()
 		_gene_popup = null
 	if not _pending_card_choices.is_empty():
-		_pause_battle_for_card_select(_pending_card_choices, _pending_first_level_up)
+		var card_choices: Array[CardData] = _pending_card_choices.duplicate()
+		var first_level_up := _pending_first_level_up
 		_pending_card_choices.clear()
+		_pending_first_level_up = false
+		_pause_battle_for_card_select(card_choices, first_level_up)
 	else:
 		_battle_paused = false
 		_player_cat.set_battle_paused(false)

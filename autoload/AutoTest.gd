@@ -208,7 +208,7 @@ func _handle_any_popup(scene: Node, layer: int) -> void:
 	var all_btns: Array[Button] = []
 	_gather_buttons(scene, all_btns)
 	for b in all_btns:
-		if b.visible and not b.disabled and b.text != "" and b.text != "—":
+		if b.is_visible_in_tree() and not b.disabled and b.text != "" and b.text != "—":
 			_log_step("  弹窗按钮: [%s]" % b.text.substr(0, 25))
 			b.pressed.emit()
 			return
@@ -241,7 +241,7 @@ func _do_card_select(cs: Node, layer: int) -> void:
 	# 过滤非禁用
 	var active: Array[Button] = []
 	for b in all_btns:
-		if not b.disabled and b.text != "—":
+		if b.is_visible_in_tree() and not b.disabled and b.text != "—":
 			active.append(b)
 
 	if active.is_empty():
@@ -264,7 +264,7 @@ func _do_event(eq: Node) -> void:
 	_gather_buttons(cv, btns)
 	var active: Array[Button] = []
 	for b in btns:
-		if not b.disabled:
+		if b.is_visible_in_tree() and not b.disabled:
 			active.append(b)
 
 	if active.is_empty():
@@ -279,7 +279,7 @@ func _do_event(eq: Node) -> void:
 	var all_btns: Array[Button] = []
 	_gather_buttons(eq, all_btns)
 	for b in all_btns:
-		if b.text == "继续前行" and b.visible:
+		if b.text == "继续前行" and b.is_visible_in_tree():
 			_log_step("  奇遇：点继续")
 			b.pressed.emit()
 			break
@@ -290,7 +290,7 @@ func _do_shop(scene: Node) -> void:
 	var btns: Array[Button] = []
 	_gather_buttons(scene, btns)
 	for b in btns:
-		if ("跳过" in b.text or "Skip" in b.text) and not b.disabled:
+		if b.is_visible_in_tree() and ("跳过" in b.text or "Skip" in b.text) and not b.disabled:
 			_log_step("  商店：跳过")
 			b.pressed.emit()
 			return
@@ -357,11 +357,23 @@ func _wait(secs: float) -> void:
 
 func _screenshot(name: String) -> void:
 	await get_tree().process_frame
-	var img := get_viewport().get_texture().get_image()
+	if DisplayServer.get_name() == "headless":
+		_log_step("  screenshot skipped: headless mode (%s)" % name)
+		return
+	var texture := get_viewport().get_texture()
+	if texture == null:
+		_log_step("  screenshot skipped: no viewport texture (%s)" % name)
+		return
+	var img := texture.get_image()
+	if img == null:
+		_log_step("  screenshot skipped: no image in headless mode (%s)" % name)
+		return
 	var path := SCREENSHOT_DIR + name + ".png"
-	img.save_png(path)
-	_screenshots.append(path)
-	print("[AutoTest] 📸 " + name)
+	if img.save_png(path) == OK:
+		_screenshots.append(path)
+		print("[AutoTest] 📸 " + name)
+	else:
+		_log_step("  screenshot skipped: save failed (%s)" % name)
 
 func _log_step(msg: String) -> void:
 	_log.append(msg)
