@@ -25,15 +25,15 @@ const BUILDING_SCENES := {
 }
 
 const BUILDING_LAYOUT := {
-	"cat_house": Vector2(220, 180),
-	"granary": Vector2(430, 180),
-	"food_farm": Vector2(640, 180),
-	"gold_mine": Vector2(850, 180),
-	"nursery": Vector2(220, 360),
-	"hospital": Vector2(430, 360),
-	"heart_cat_house": Vector2(640, 360),
-	"cemetery": Vector2(850, 360),
-	"fortune_cat": Vector2(535, 520),
+	"cat_house": Vector2(220, 210),
+	"granary": Vector2(395, 150),
+	"food_farm": Vector2(250, 470),
+	"gold_mine": Vector2(760, 150),
+	"nursery": Vector2(660, 455),
+	"hospital": Vector2(825, 340),
+	"heart_cat_house": Vector2(465, 270),
+	"cemetery": Vector2(860, 505),
+	"fortune_cat": Vector2(560, 335),
 }
 
 @onready var _buildings_root: Node2D = $IsometricWorld/Buildings

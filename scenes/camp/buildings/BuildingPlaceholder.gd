@@ -22,18 +22,20 @@ func _draw() -> void:
 
 func _draw_shadow() -> void:
 	var shadow := PackedVector2Array([
-		Vector2(-64.0, 22.0),
-		Vector2(0.0, 48.0),
-		Vector2(68.0, 22.0),
-		Vector2(8.0, 0.0),
+		Vector2(-58.0, 26.0),
+		Vector2(-22.0, 43.0),
+		Vector2(38.0, 43.0),
+		Vector2(66.0, 28.0),
+		Vector2(18.0, 12.0),
+		Vector2(-38.0, 14.0),
 	])
-	draw_colored_polygon(shadow, Color(0.05, 0.04, 0.03, 0.22))
+	draw_colored_polygon(shadow, Color(0.05, 0.04, 0.03, 0.18))
 
 func _draw_ground(color: Color) -> void:
-	var ground := _diamond(Vector2(0.0, 18.0), block_size.x, block_size.y)
+	var ground := _oval(Vector2(0.0, 24.0), block_size.x * 0.86, block_size.y * 0.62, 22)
 	draw_colored_polygon(ground, color)
-	_draw_poly_outline(ground, OUTLINE, 2.0)
-	draw_arc(Vector2(0.0, 18.0), 46.0, 0.05, PI - 0.05, 20, Color(1.0, 1.0, 1.0, 0.14), 1.4)
+	_draw_poly_outline(ground, Color(0.14, 0.18, 0.11, 0.38), 1.8)
+	draw_arc(Vector2(0.0, 24.0), 44.0, 0.08, PI - 0.08, 20, Color(1.0, 1.0, 1.0, 0.12), 1.2)
 
 func _draw_building(palette: Dictionary) -> void:
 	match building_id:
@@ -175,6 +177,14 @@ func _diamond(center: Vector2, width: float, height: float) -> PackedVector2Arra
 		center + Vector2(0.0, height * 0.5),
 		center + Vector2(-width * 0.5, 0.0),
 	])
+
+func _oval(center: Vector2, width: float, height: float, count: int) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for i in count:
+		var angle := TAU * float(i) / float(count)
+		var wobble := 0.94 + 0.06 * sin(float(i) * 2.17)
+		points.append(center + Vector2(cos(angle) * width * 0.5 * wobble, sin(angle) * height * 0.5 * wobble))
+	return points
 
 func _palette() -> Dictionary:
 	match building_id:
