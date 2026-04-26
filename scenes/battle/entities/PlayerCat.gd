@@ -330,12 +330,36 @@ func _draw() -> void:
 	draw_line(Vector2(10.0, 2.0), Vector2(21.0, -1.0), outline, 1.2)
 	draw_line(Vector2(-10.0, 6.0), Vector2(-21.0, 7.0), outline, 1.2)
 	draw_line(Vector2(10.0, 6.0), Vector2(21.0, 7.0), outline, 1.2)
+	_draw_battle_breed_marks(cat_color)
 	draw_rect(Rect2(Vector2(-18, -24), Vector2(36, 4)), Color(0.15, 0.15, 0.15), true)
 	var hp_ratio: float = clamp(current_hp / max(max_hp, 1.0), 0.0, 1.0)
 	draw_rect(Rect2(Vector2(-18, -24), Vector2(36 * hp_ratio, 4)), Color(0.2, 0.9, 0.25), true)
 	draw_rect(Rect2(Vector2(-18, -18), Vector2(36, 3)), Color(0.12, 0.12, 0.18), true)
 	var xp_ratio: float = clamp(float(_xp_progress) / maxf(float(_xp_to_next), 1.0), 0.0, 1.0)
 	draw_rect(Rect2(Vector2(-18, -18), Vector2(36 * xp_ratio, 3)), Color(0.3, 0.65, 1.0), true)
+
+func _draw_battle_breed_marks(cat_color: Color) -> void:
+	if cat_data == null:
+		return
+	match cat_data.breed:
+		"tabby":
+			for y in [-9.0, -5.0, -1.0]:
+				draw_line(Vector2(-7.0, y), Vector2(7.0, y - 3.0), Color(0.18, 0.11, 0.08, 0.7), 1.4)
+		"ragdoll":
+			draw_circle(Vector2(-5.0, -2.0), 4.8, Color(0.55, 0.42, 0.32, 0.65))
+			draw_circle(Vector2(5.0, -2.0), 4.8, Color(0.55, 0.42, 0.32, 0.65))
+			draw_circle(Vector2(0.0, 7.0), 4.0, Color(0.98, 0.95, 0.84, 0.72))
+		"siamese":
+			draw_circle(Vector2.ZERO, 8.0, Color(0.24, 0.16, 0.12, 0.5))
+		"orange":
+			for x in [-6.0, 0.0, 6.0]:
+				draw_line(Vector2(x - 4.0, -11.0), Vector2(x + 1.0, -5.0), Color(0.8, 0.32, 0.12, 0.62), 1.5)
+		"black":
+			draw_circle(Vector2(-4.0, -2.0), 2.5, Color(0.95, 0.86, 0.2, 1.0))
+			draw_circle(Vector2(4.0, -2.0), 2.5, Color(0.95, 0.86, 0.2, 1.0))
+		"british":
+			draw_circle(Vector2(-8.0, 3.0), 4.0, cat_color.lightened(0.18))
+			draw_circle(Vector2(8.0, 3.0), 4.0, cat_color.lightened(0.18))
 
 func _battle_cat_color() -> Color:
 	if cat_data == null:

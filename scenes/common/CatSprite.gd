@@ -216,6 +216,7 @@ func _draw() -> void:
 	draw_line(shake + Vector2(9.0, 2.0) * scale_mult, shake + Vector2(20.0, 0.0) * scale_mult, outline, 1.2 * scale_mult)
 	draw_line(shake + Vector2(-9.0, 6.0) * scale_mult, shake + Vector2(-20.0, 7.0) * scale_mult, outline, 1.2 * scale_mult)
 	draw_line(shake + Vector2(9.0, 6.0) * scale_mult, shake + Vector2(20.0, 7.0) * scale_mult, outline, 1.2 * scale_mult)
+	_draw_breed_marks(shake, scale_mult, cat_color)
 
 	if _dragging:
 		draw_arc(shake, r + 3.0, 0.0, TAU, 32, Color(1.0, 1.0, 1.0, 0.5), 2.0)
@@ -297,15 +298,45 @@ func _draw_skull(base: Vector2) -> void:
 	draw_circle(base + Vector2(0.0, -24.0), 6.0, Color(0.85, 0.85, 0.85, 0.9))
 	draw_circle(base + Vector2(-2.5, -25.0), 1.5, Color(0.2, 0.2, 0.2, 0.9))
 	draw_circle(base + Vector2(2.5, -25.0), 1.5, Color(0.2, 0.2, 0.2, 0.9))
+	draw_line(base + Vector2(-12.0, 9.0), base + Vector2(8.0, -8.0), Color(0.95, 0.92, 0.82, 1.0), 4.0)
+	draw_line(base + Vector2(-9.0, 6.0), base + Vector2(-5.0, 10.0), Color(0.7, 0.15, 0.18, 1.0), 1.5)
+	draw_circle(base + Vector2(11.0, -18.0), 2.5, Color(0.45, 0.7, 1.0, 0.75))
+
+func _draw_breed_marks(base: Vector2, scale_mult: float, cat_color: Color) -> void:
+	if cat_data == null:
+		return
+	var mark := Color(0.18, 0.11, 0.08, 0.72)
+	match cat_data.breed:
+		"tabby":
+			for y in [-9.0, -5.0, -1.0]:
+				draw_line(base + Vector2(-7.0, y) * scale_mult, base + Vector2(7.0, y - 3.0) * scale_mult, mark, 1.4 * scale_mult)
+		"ragdoll":
+			draw_circle(base + Vector2(-5.0, -2.0) * scale_mult, 4.8 * scale_mult, Color(0.55, 0.42, 0.32, 0.65))
+			draw_circle(base + Vector2(5.0, -2.0) * scale_mult, 4.8 * scale_mult, Color(0.55, 0.42, 0.32, 0.65))
+			draw_circle(base + Vector2(0.0, 7.0) * scale_mult, 4.0 * scale_mult, Color(0.98, 0.95, 0.84, 0.72))
+		"siamese":
+			draw_circle(base + Vector2(0.0, 0.0) * scale_mult, 8.0 * scale_mult, Color(0.24, 0.16, 0.12, 0.5))
+			draw_circle(base + Vector2(-7.0, -17.0) * scale_mult, 3.0 * scale_mult, Color(0.18, 0.12, 0.1, 0.65))
+			draw_circle(base + Vector2(7.0, -17.0) * scale_mult, 3.0 * scale_mult, Color(0.18, 0.12, 0.1, 0.65))
+		"orange":
+			for x in [-6.0, 0.0, 6.0]:
+				draw_line(base + Vector2(x - 4.0, -11.0) * scale_mult, base + Vector2(x + 1.0, -5.0) * scale_mult, Color(0.8, 0.32, 0.12, 0.62), 1.5 * scale_mult)
+		"black":
+			draw_circle(base + Vector2(-4.0, -2.0) * scale_mult, 2.5 * scale_mult, Color(0.95, 0.86, 0.2, 1.0))
+			draw_circle(base + Vector2(4.0, -2.0) * scale_mult, 2.5 * scale_mult, Color(0.95, 0.86, 0.2, 1.0))
+		"british":
+			draw_circle(base + Vector2(-8.0, 3.0) * scale_mult, 4.0 * scale_mult, cat_color.lightened(0.18))
+			draw_circle(base + Vector2(8.0, 3.0) * scale_mult, 4.0 * scale_mult, cat_color.lightened(0.18))
 
 func _get_cat_color() -> Color:
 	if cat_data == null:
 		return Color(0.95, 0.73, 0.28, 1.0)
-	match cat_data.profession:
-		"sniper":  return Color(0.96, 0.66, 0.28, 1.0)
-		"aoe":     return Color(0.9, 0.5, 0.3, 1.0)
-		"control": return Color(0.42, 0.68, 0.95, 1.0)
-		"support": return Color(0.53, 0.87, 0.62, 1.0)
+	match cat_data.breed:
+		"ragdoll": return Color(0.9, 0.84, 0.72, 1.0)
+		"siamese": return Color(0.76, 0.64, 0.48, 1.0)
+		"orange": return Color(0.98, 0.62, 0.2, 1.0)
+		"black": return Color(0.16, 0.16, 0.18, 1.0)
+		"british": return Color(0.62, 0.68, 0.72, 1.0)
 	return Color(0.95, 0.73, 0.28, 1.0)
 
 func _pick_new_target() -> void:

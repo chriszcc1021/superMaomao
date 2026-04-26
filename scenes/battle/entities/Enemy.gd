@@ -97,29 +97,21 @@ func _draw() -> void:
 	if _slow_timer > 0.0:
 		col = tint_color.lerp(Color(0.4, 0.7, 1.0, 1.0), 0.5)
 	var outline := Color(0.12, 0.09, 0.08, 1.0)
-	var scale_mult := 1.0
-	if is_boss:
-		scale_mult = 1.75
-	elif is_elite or enemy_type == "tank_gorilla":
-		scale_mult = 1.35
-	draw_circle(Vector2(0.0, 7.0 * scale_mult), 12.0 * scale_mult, Color(0.0, 0.0, 0.0, 0.18))
-	draw_circle(Vector2.ZERO, 13.5 * scale_mult, outline)
-	draw_circle(Vector2.ZERO, 11.5 * scale_mult, col)
-	draw_circle(Vector2(-8.0, -4.0) * scale_mult, 5.0 * scale_mult, outline)
-	draw_circle(Vector2(8.0, -4.0) * scale_mult, 5.0 * scale_mult, outline)
-	draw_circle(Vector2(-8.0, -4.0) * scale_mult, 3.2 * scale_mult, col.lightened(0.16))
-	draw_circle(Vector2(8.0, -4.0) * scale_mult, 3.2 * scale_mult, col.lightened(0.16))
-	draw_circle(Vector2(-4.0, -2.0) * scale_mult, 1.8 * scale_mult, Color.BLACK)
-	draw_circle(Vector2(4.0, -2.0) * scale_mult, 1.8 * scale_mult, Color.BLACK)
-	draw_circle(Vector2(0.0, 2.5) * scale_mult, 1.6 * scale_mult, Color(0.12, 0.08, 0.06, 1.0))
-	draw_arc(Vector2(0.0, 3.0) * scale_mult, 5.0 * scale_mult, 0.25, PI - 0.25, 10, outline, 1.3 * scale_mult)
+	var scale_mult := _visual_scale()
+	_draw_shadow(scale_mult)
+	if _is_gorilla():
+		_draw_gorilla_body(scale_mult, col, outline)
+	else:
+		_draw_monkey_tail(scale_mult, outline)
+	_draw_enemy_head(scale_mult, col, outline)
 	if enemy_type == "stone_monkey":
-		_draw_enemy_badge(Vector2(0.0, -14.0) * scale_mult, scale_mult, Color(0.72, 0.76, 0.78, 1.0))
+		_draw_stone_plates(scale_mult)
 	elif enemy_type == "tank_gorilla":
-		draw_rect(Rect2(Vector2(-9.0, -18.0) * scale_mult, Vector2(18.0, 8.0) * scale_mult), Color(0.3, 0.3, 0.34, 1.0), true)
+		_draw_gorilla_armor(scale_mult, Color(0.3, 0.31, 0.34, 1.0))
 	elif is_elite:
 		_draw_enemy_badge(Vector2(0.0, -16.0) * scale_mult, scale_mult, Color(0.86, 0.45, 1.0, 1.0))
 	elif is_boss:
+		_draw_gorilla_armor(scale_mult, Color(0.46, 0.08, 0.08, 1.0))
 		_draw_crown(Vector2(0.0, -19.0) * scale_mult, scale_mult)
 	if show_hp_bar:
 		var hp_ratio: float = clamp(current_hp / max(max_hp, 1.0), 0.0, 1.0)
@@ -127,6 +119,72 @@ func _draw() -> void:
 		var bar_y := -26.0 * scale_mult
 		draw_rect(Rect2(Vector2(-bar_width * 0.5, bar_y), Vector2(bar_width, 4.0)), Color(0.15, 0.15, 0.15), true)
 		draw_rect(Rect2(Vector2(-bar_width * 0.5, bar_y), Vector2(bar_width * hp_ratio, 4.0)), Color(0.25, 0.85, 0.25), true)
+
+func _visual_scale() -> float:
+	match enemy_type:
+		"stone_monkey":
+			return 1.1
+		"elite_monkey":
+			return 1.28
+		"tank_gorilla":
+			return 1.55
+		"boss_gorilla_king":
+			return 2.05
+		_:
+			return 0.95
+
+func _is_gorilla() -> bool:
+	return enemy_type == "tank_gorilla" or enemy_type == "boss_gorilla_king"
+
+func _draw_shadow(scale_mult: float) -> void:
+	draw_circle(Vector2(0.0, 11.0 * scale_mult), 12.0 * scale_mult, Color(0.0, 0.0, 0.0, 0.18))
+	draw_line(
+		Vector2(-12.0, 11.0) * scale_mult,
+		Vector2(12.0, 11.0) * scale_mult,
+		Color(0.0, 0.0, 0.0, 0.14),
+		5.0 * scale_mult
+	)
+
+func _draw_monkey_tail(scale_mult: float, outline: Color) -> void:
+	draw_arc(Vector2(-11.0, 5.0) * scale_mult, 10.0 * scale_mult, 0.4 * PI, 1.55 * PI, 22, outline, 3.0 * scale_mult)
+	draw_arc(Vector2(-11.0, 5.0) * scale_mult, 7.0 * scale_mult, 0.45 * PI, 1.5 * PI, 18, tint_color.lightened(0.1), 1.5 * scale_mult)
+
+func _draw_gorilla_body(scale_mult: float, col: Color, outline: Color) -> void:
+	draw_circle(Vector2(-13.0, 10.0) * scale_mult, 9.0 * scale_mult, outline)
+	draw_circle(Vector2(13.0, 10.0) * scale_mult, 9.0 * scale_mult, outline)
+	draw_circle(Vector2(0.0, 13.0) * scale_mult, 14.0 * scale_mult, outline)
+	draw_circle(Vector2(-13.0, 9.0) * scale_mult, 7.0 * scale_mult, col.darkened(0.14))
+	draw_circle(Vector2(13.0, 9.0) * scale_mult, 7.0 * scale_mult, col.darkened(0.14))
+	draw_circle(Vector2(0.0, 12.0) * scale_mult, 11.0 * scale_mult, col.darkened(0.08))
+
+func _draw_enemy_head(scale_mult: float, col: Color, outline: Color) -> void:
+	var head_radius := 12.0 if _is_gorilla() else 11.2
+	draw_circle(Vector2.ZERO, (head_radius + 2.0) * scale_mult, outline)
+	draw_circle(Vector2.ZERO, head_radius * scale_mult, col)
+	draw_circle(Vector2(-8.0, -4.0) * scale_mult, 5.0 * scale_mult, outline)
+	draw_circle(Vector2(8.0, -4.0) * scale_mult, 5.0 * scale_mult, outline)
+	draw_circle(Vector2(-8.0, -4.0) * scale_mult, 3.2 * scale_mult, col.lightened(0.16))
+	draw_circle(Vector2(8.0, -4.0) * scale_mult, 3.2 * scale_mult, col.lightened(0.16))
+	draw_circle(Vector2(-4.0, -2.5) * scale_mult, 1.7 * scale_mult, Color.BLACK)
+	draw_circle(Vector2(4.0, -2.5) * scale_mult, 1.7 * scale_mult, Color.BLACK)
+	if _is_gorilla():
+		draw_circle(Vector2(0.0, 4.0) * scale_mult, 5.8 * scale_mult, col.lightened(0.18))
+		draw_circle(Vector2(-2.5, 3.0) * scale_mult, 1.0 * scale_mult, Color(0.12, 0.08, 0.06, 1.0))
+		draw_circle(Vector2(2.5, 3.0) * scale_mult, 1.0 * scale_mult, Color(0.12, 0.08, 0.06, 1.0))
+		draw_arc(Vector2(0.0, 4.5) * scale_mult, 5.0 * scale_mult, 0.2, PI - 0.2, 10, outline, 1.4 * scale_mult)
+	else:
+		draw_circle(Vector2(0.0, 2.5) * scale_mult, 1.6 * scale_mult, Color(0.12, 0.08, 0.06, 1.0))
+		draw_arc(Vector2(0.0, 3.0) * scale_mult, 5.0 * scale_mult, 0.25, PI - 0.25, 10, outline, 1.3 * scale_mult)
+
+func _draw_stone_plates(scale_mult: float) -> void:
+	var plate_color := Color(0.78, 0.8, 0.82, 1.0)
+	_draw_enemy_badge(Vector2(0.0, -14.0) * scale_mult, scale_mult, plate_color)
+	_draw_enemy_badge(Vector2(-6.5, 4.0) * scale_mult, scale_mult * 0.55, plate_color.darkened(0.08))
+	_draw_enemy_badge(Vector2(6.5, 4.0) * scale_mult, scale_mult * 0.55, plate_color.darkened(0.12))
+
+func _draw_gorilla_armor(scale_mult: float, color: Color) -> void:
+	draw_rect(Rect2(Vector2(-10.0, -18.0) * scale_mult, Vector2(20.0, 7.0) * scale_mult), color, true)
+	draw_line(Vector2(-10.0, -11.0) * scale_mult, Vector2(10.0, -11.0) * scale_mult, color.lightened(0.25), 1.3 * scale_mult)
 
 func _draw_enemy_badge(center: Vector2, scale_mult: float, color: Color) -> void:
 	var points := PackedVector2Array([
