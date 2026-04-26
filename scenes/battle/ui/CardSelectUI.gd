@@ -2,6 +2,7 @@ extends Control
 
 const CardData := preload("res://resources/CardData.gd")
 const GameConstants := preload("res://data/constants.gd")
+const ArtIcon := preload("res://scenes/common/ArtIcon.gd")
 
 signal card_chosen(card: CardData)
 
@@ -12,10 +13,12 @@ signal card_chosen(card: CardData)
 @onready var _option_c: Button = $Panel/VBox/OptionC
 
 var _choices: Array[CardData] = []
+var _option_icons: Array[ArtIcon] = []
 
 func _ready() -> void:
 	visible = false
 	_configure_text_layout()
+	_build_option_icons()
 	_option_a.pressed.connect(_on_option_pressed.bind(0))
 	_option_b.pressed.connect(_on_option_pressed.bind(1))
 	_option_c.pressed.connect(_on_option_pressed.bind(2))
@@ -41,7 +44,9 @@ func _set_button_text(button: Button, idx: int) -> void:
 	var card: CardData = _choices[idx]
 	button.disabled = false
 	var rarity_text: String = str(GameConstants.RARITY_DISPLAY_ZH.get(card.rarity, card.rarity))
-	button.text = "%s【%s】\n%s" % [card.card_name, rarity_text, card.description]
+	button.text = "      %s【%s】\n      %s" % [card.card_name, rarity_text, card.description]
+	if idx < _option_icons.size():
+		_option_icons[idx].setup(card.id if not card.id.is_empty() else card.card_type, card.rarity)
 
 func _on_option_pressed(idx: int) -> void:
 	if idx >= _choices.size():
@@ -56,3 +61,12 @@ func _configure_text_layout() -> void:
 		button.clip_text = true
 		@warning_ignore("int_as_enum_without_cast")
 		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+
+func _build_option_icons() -> void:
+	_option_icons.clear()
+	for button: Button in [_option_a, _option_b, _option_c]:
+		var icon := ArtIcon.new()
+		icon.size = Vector2(50.0, 50.0)
+		icon.position = Vector2(14.0, 34.0)
+		button.add_child(icon)
+		_option_icons.append(icon)

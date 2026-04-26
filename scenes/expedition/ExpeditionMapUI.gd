@@ -5,6 +5,7 @@ const QuestionEventUIScene := preload("res://scenes/expedition/QuestionEventUI.t
 const QuestionEvents    := preload("res://data/question_events.gd")
 const CatData           := preload("res://resources/CatData.gd")
 const GameConsts        := preload("res://data/constants.gd")
+const ArtIcon           := preload("res://scenes/common/ArtIcon.gd")
 const CAMP_SCENE_PATH   := "res://scenes/camp/CampScene.tscn"
 @onready var _cat_option: OptionButton = $Panel/VBox/SetupRow/CatOption
 @onready var _start_button: Button = $Panel/VBox/SetupRow/StartButton
@@ -150,9 +151,14 @@ func _refresh_nodes() -> void:
 		var node_data: Dictionary = _current_nodes[idx]
 		var button := Button.new()
 		button.custom_minimum_size = Vector2(260.0, 120.0)
-		button.text = str(node_data.get("label", "节点"))
+		button.text = "\n\n" + str(node_data.get("label", "节点"))
 		button.pressed.connect(_on_node_pressed.bind(idx))
 		_node_row.add_child(button)
+		var icon := ArtIcon.new()
+		icon.setup(str(node_data.get("type", "battle_normal")))
+		icon.size = Vector2(52.0, 52.0)
+		icon.position = Vector2(104.0, 14.0)
+		button.add_child(icon)
 
 func _clear_nodes() -> void:
 	for child: Node in _node_row.get_children():
