@@ -240,19 +240,8 @@ func _try_load_save() -> void:
 	game_state.intro_stray_timer_sec = float(data.get("intro_stray_timer_sec", 0.0))
 	game_state.intro_stray_target_sex = str(data.get("intro_stray_target_sex", ""))
 	game_state.stray_cat_queue = _deserialize_cats(data.get("stray_cat_queue", []))
-	game_state.expedition_active = bool(data.get("expedition_active", false))
-	game_state.expedition_cat_id = str(data.get("expedition_cat_id", ""))
-	game_state.expedition_layer = int(data.get("expedition_layer", 0))
-	game_state.expedition_battle_wins = int(data.get("expedition_battle_wins", 0))
-	if data.has("expedition_buffs"):
-		game_state.expedition_buffs = data["expedition_buffs"]
-	if data.has("expedition_active_genes"):
-		var genes: Array[String] = []
-		for g in data["expedition_active_genes"]:
-			genes.append(str(g))
-		game_state.expedition_active_genes = genes
-	if data.has("expedition_shop_cards"):
-		game_state.expedition_shop_cards = data["expedition_shop_cards"]
+	if game_state.has_method("restore_expedition_state"):
+		game_state.restore_expedition_state(data)
 	game_state.ensure_intro_state()
 
 func _serialize_cats(cats_data: Array) -> Array:

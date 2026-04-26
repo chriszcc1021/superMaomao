@@ -5,7 +5,8 @@ extends Node
 const CatData        := preload("res://resources/CatData.gd")
 const GameConstants  := preload("res://data/constants.gd")
 const CatFactory     := preload("res://data/cat_factory.gd")
-const BreedingSystem := preload("res://scenes/camp/BreedingSystem.gd")
+const BuildingService := preload("res://autoload/BuildingService.gd")
+const BreedingSlotService := preload("res://autoload/BreedingSlotService.gd")
 
 const DEFAULT_BUILDINGS_BUILT := {
 	"cat_house": true,
@@ -49,6 +50,8 @@ var expedition_shop_cards: Array = []
 var pending_expedition_summary: String = ""
 var buildings_built: Dictionary = DEFAULT_BUILDINGS_BUILT.duplicate(true)
 var cat_house_slots: int = GameConstants.STARTING_CAT_HOUSE_SLOTS
+var _building_service = BuildingService.new()
+var _breeding_slot_service = BreedingSlotService.new()
 
 # ─── 产房坑位 ─────────────────────────────────────────────────────────────────
 # 每个坑位结构: { "active": bool, "father_id": String, "mother_id": String, "days_remaining": int }
@@ -244,40 +247,13 @@ func get_building_level(building_id: String) -> int:
 	return 0
 
 func is_cat_breeding(cat: CatData) -> bool:
-	if cat == null or cat.id.is_empty():
-		return false
-	for slot in breeding_slots:
-		if not bool(slot.get("active", false)):
-			continue
-		if str(slot.get("father_id", "")) == cat.id:
-			return true
-		if str(slot.get("mother_id", "")) == cat.id:
-			return true
-	return false
+	return _breeding_slot_service.is_cat_breeding(self, cat)
 
 func can_cat_breed(cat: CatData) -> bool:
-	if cat == null:
-		return false
-	if cat.age_days < GameConstants.KITTEN_DAYS:
-		return false
-	if not cat.can_breed():
-		return false
-	if cat.health != GameConstants.HEALTH_STATE_HEALTHY:
-		return false
-	if cat.status == GameConstants.LIFECYCLE_STATUS_EXPEDITION:
-		return false
-	if cat.status == GameConstants.LIFECYCLE_STATUS_BURIED:
-		return false
-	if is_cat_breeding(cat):
-		return false
-	return true
+	return _breeding_slot_service.can_cat_breed(self, cat)
 
 func get_breedable_cats() -> Array[CatData]:
-	var result: Array[CatData] = []
-	for cat: CatData in cats:
-		if can_cat_breed(cat):
-			result.append(cat)
-	return result
+	return _breeding_slot_service.get_breedable_cats(self)
 
 func get_expedition_block_reason(cat: CatData) -> String:
 	if cat == null:
@@ -341,14 +317,55 @@ func add_expedition_buff_dict(buff: Dictionary) -> void:
 		return
 	expedition_buffs.append(buff)
 
+func consume_expedition_buff(buff) -> void:
+	expedition_buffs.erase(buff)
+
+func pop_random_expedition_buff() -> Dictionary:
+	if expedition_buffs.is_empty():
+		return {}
+	var remove_idx := randi() % expedition_buffs.size()
+	var removed = expedition_buffs[remove_idx]
+	expedition_buffs.remove_at(remove_idx)
+	if removed is Dictionary:
+		return removed
+	return {"label": str(removed)}
+
 func add_expedition_active_gene(gene_id: String) -> void:
 	if gene_id.is_empty():
 		return
 	expedition_active_genes.append(gene_id)
 
+func add_expedition_shop_card(card_def: Dictionary) -> void:
+	if card_def.is_empty():
+		return
+	expedition_shop_cards.append(card_def)
+
 func advance_expedition_layer() -> int:
 	expedition_layer += 1
 	return expedition_layer
+
+func set_pending_expedition_summary(summary: String) -> void:
+	pending_expedition_summary = summary
+
+func consume_pending_expedition_summary() -> String:
+	var summary := pending_expedition_summary
+	pending_expedition_summary = ""
+	return summary
+
+func restore_expedition_state(data: Dictionary) -> void:
+	expedition_active = bool(data.get("expedition_active", false))
+	expedition_cat_id = str(data.get("expedition_cat_id", ""))
+	expedition_layer = int(data.get("expedition_layer", 0))
+	expedition_battle_wins = int(data.get("expedition_battle_wins", 0))
+	if data.has("expedition_buffs"):
+		expedition_buffs = data["expedition_buffs"]
+	if data.has("expedition_active_genes"):
+		var genes: Array[String] = []
+		for gene_id in data["expedition_active_genes"]:
+			genes.append(str(gene_id))
+		expedition_active_genes = genes
+	if data.has("expedition_shop_cards"):
+		expedition_shop_cards = data["expedition_shop_cards"]
 
 func clear_expedition_state() -> void:
 	expedition_active = false
@@ -383,94 +400,18 @@ func _opposite_sex(value: String) -> String:
 ## 返回升级是否成功
 ## 建造一个新建筑。成功返�?true，失败返�?false�?
 func build_building(building_id: String) -> bool:
-	if has_building(building_id):
-		return false  # 已建�?
-	var cost: int = int(GameConstants.BUILDING_COSTS.get(building_id, 0))
-	if cost > 0 and not spend_coins(cost):
-		return false
-	set_building_state(building_id, true)
-	return true
+	return _building_service.build_building(self, building_id)
 
 func upgrade_building(building_id: String) -> bool:
-	match building_id:
-		"cat_house":
-			return _upgrade_cat_house()
-		"granary":
-			return _upgrade_granary()
-		"fortune_cat":
-			return _upgrade_fortune_cat()
-		"nursery":
-			return _upgrade_nursery()
-	return false
-
-func _upgrade_cat_house() -> bool:
-	if cat_house_slots >= GameConstants.MAX_CAT_HOUSE_SLOTS:
-		return false
-	var cost: int = int(GameConstants.BUILDING_COSTS.get("cat_house_expand", 60))
-	if coins < cost:
-		return false
-	coins -= cost
-	cat_house_slots += 1
-	coins_changed.emit(coins)
-	return true
-
-func _upgrade_granary() -> bool:
-	var current_level: int = get_building_level("granary")
-	if current_level >= GameConstants.GRANARY_MAX_LEVEL:
-		return false
-	var cost_idx: int = current_level - 1  # 0-based
-	if cost_idx < 0 or cost_idx >= GameConstants.GRANARY_UPGRADE_COSTS.size():
-		return false
-	var cost: int = int(GameConstants.GRANARY_UPGRADE_COSTS[cost_idx])
-	if coins < cost:
-		return false
-	coins -= cost
-	buildings_built["granary"] = current_level + 1
-	cat_food_cap = int(GameConstants.GRANARY_FOOD_CAP_BY_LEVEL.get(current_level + 1, cat_food_cap))
-	coins_changed.emit(coins)
-	cat_food_changed.emit(cat_food)
-	return true
-
-func _upgrade_fortune_cat() -> bool:
-	var current_level: int = get_building_level("fortune_cat")
-	if current_level >= GameConstants.FORTUNE_CAT_MAX_WORKERS_BY_LEVEL.size():
-		return false
-	var cost_idx: int = current_level - 1  # 0-based index into upgrade costs
-	if cost_idx < 0 or cost_idx >= GameConstants.FORTUNE_CAT_UPGRADE_COSTS.size():
-		return false
-	var cost: int = int(GameConstants.FORTUNE_CAT_UPGRADE_COSTS[cost_idx])
-	if coins < cost:
-		return false
-	coins -= cost
-	buildings_built["fortune_cat"] = current_level + 1
-	coins_changed.emit(coins)
-	return true
-
-func _upgrade_nursery() -> bool:
-	if max_breeding_slots >= GameConstants.BREEDING_SLOT_MAX:
-		return false
-	var cost_idx: int = max_breeding_slots - 1  # 0-based: 0=解锁�?�? 1=解锁�?�?
-	if cost_idx < 0 or cost_idx >= GameConstants.BREEDING_SLOT_UPGRADE_COSTS.size():
-		return false
-	var cost: int = int(GameConstants.BREEDING_SLOT_UPGRADE_COSTS[cost_idx])
-	if coins < cost:
-		return false
-	coins -= cost
-	max_breeding_slots += 1
-	_init_breeding_slots()
-	coins_changed.emit(coins)
-	return true
+	return _building_service.upgrade_building(self, building_id)
 
 # ─── 产房坑位 API ─────────────────────────────────────────────────────────────
 
 func _init_breeding_slots() -> void:
-	while breeding_slots.size() < max_breeding_slots:
-		breeding_slots.append({"active": false, "father_id": "", "mother_id": "", "days_remaining": 0})
+	_breeding_slot_service.init_slots(self)
 
 func sync_breeding_slots() -> void:
-	if breeding_slots.size() > max_breeding_slots:
-		breeding_slots.resize(max_breeding_slots)
-	_init_breeding_slots()
+	_breeding_slot_service.sync_slots(self)
 
 func get_breeding_slot(index: int) -> Dictionary:
 	if index < 0 or index >= breeding_slots.size():
@@ -479,70 +420,10 @@ func get_breeding_slot(index: int) -> Dictionary:
 
 ## 启动一个坑位的繁育。成功返�?true，失败返�?false�?
 func start_breeding_in_slot(slot_idx: int, father_id: String, mother_id: String, child_breed: String, child_profession: String) -> bool:
-	if slot_idx < 0 or slot_idx >= breeding_slots.size():
-		return false
-	if not has_building("nursery"):
-		return false
-	var slot: Dictionary = breeding_slots[slot_idx]
-	if slot.get("active", false):
-		return false
-	if not has_free_cat_house_slot():
-		return false
-	# 验证父母
-	if father_id == mother_id:
-		return false
-	var father := find_cat(father_id)
-	var mother := find_cat(mother_id)
-	if father == null or mother == null:
-		return false
-	if not can_cat_breed(father) or not can_cat_breed(mother):
-		return false
-	if father.sex != GameConstants.SEX_MALE or mother.sex != GameConstants.SEX_FEMALE:
-		return false
-	# 成功率检查
-	var chance := GameConstants.BREED_SUCCESS_WITH_NURSERY
-	if father.has_gene("love_spreader") or mother.has_gene("love_spreader"):
-		chance = minf(1.0, chance + 0.15)
-	if randf() > chance:
-		return false  # 本次繁育失败，坑位不占用
-	slot["active"] = true
-	slot["father_id"] = father_id
-	slot["mother_id"] = mother_id
-	slot["child_breed"] = child_breed
-	slot["child_profession"] = child_profession
-	slot["days_remaining"] = GameConstants.BREEDING_SLOT_CD_DAYS
-	father.breed_count += 1
-	mother.breed_count += 1
-	father.assigned_building = "nursery"
-	mother.assigned_building = "nursery"
-	return true
+	return _breeding_slot_service.start_in_slot(self, slot_idx, father_id, mother_id, child_breed, child_profession)
 
-## DayManager 每天调用，推进所有坑位倒计时，返回本天出生的猫列表
 func tick_breeding_slots() -> Array[CatData]:
-	var born: Array[CatData] = []
-	for i in breeding_slots.size():
-		var slot: Dictionary = breeding_slots[i]
-		if not slot.get("active", false):
-			continue
-		slot["days_remaining"] = int(slot["days_remaining"]) - 1
-		if slot["days_remaining"] > 0:
-			continue
-		# 出生
-		var father := find_cat(str(slot.get("father_id", "")))
-		var mother := find_cat(str(slot.get("mother_id", "")))
-		if father != null and mother != null:
-			var breeding_sys := BreedingSystem.new()
-			var child_breed := str(slot.get("child_breed", father.breed))
-			var child_profession := str(slot.get("child_profession", father.profession))
-			var child := breeding_sys.breed(father, mother, child_breed, child_profession)
-			if child != null and add_cat(child):
-				born.append(child)
-		# 清空坑位
-		slot["active"] = false
-		slot["father_id"] = ""
-		slot["mother_id"] = ""
-		slot["days_remaining"] = 0
-	return born
+	return _breeding_slot_service.tick_slots(self)
 
 func find_cat(cat_id: String) -> CatData:
 	if cat_id.is_empty():

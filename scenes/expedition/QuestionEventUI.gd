@@ -306,12 +306,10 @@ func _apply_effect(effect: Dictionary, game_state: Node) -> String:
 			return "最差的一张手牌将被弃置"
 
 		"lose_random_buff":
-			# 随机移除一个expedition buff
-			if game_state and game_state.expedition_buffs.size() > 0:
-				var buffs_arr: Array = game_state.expedition_buffs
-				var remove_idx := randi() % buffs_arr.size()
-				var removed: Dictionary = buffs_arr[remove_idx]
-				buffs_arr.remove_at(remove_idx)
+			if game_state and game_state.has_method("pop_random_expedition_buff"):
+				var removed: Dictionary = game_state.pop_random_expedition_buff()
+				if removed.is_empty():
+					return "没有可以失去的 buff"
 				return "失去了 buff：%s" % str(removed.get("label", "某个增益"))
 			return "没有可以失去的 buff"
 

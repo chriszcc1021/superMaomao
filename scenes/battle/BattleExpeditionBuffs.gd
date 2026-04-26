@@ -44,7 +44,10 @@ func apply(game_state: Node, player_cat: Node, grant_bonus_card: Callable, dmg_t
 				consume_list.append(buff)
 
 	for used in consume_list:
-		game_state.expedition_buffs.erase(used)
+		if game_state.has_method("consume_expedition_buff"):
+			game_state.consume_expedition_buff(used)
+		else:
+			game_state.expedition_buffs.erase(used)
 	return next_dmg_taken_modifier
 
 func _parse_buff(buff) -> Dictionary:

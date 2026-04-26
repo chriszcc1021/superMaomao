@@ -465,10 +465,9 @@ func _build_expedition_summary_dialog() -> void:
 func _show_pending_expedition_summary() -> void:
 	if _game_state == null:
 		return
-	var summary := str(_game_state.pending_expedition_summary)
+	var summary := str(_game_state.consume_pending_expedition_summary())
 	if summary.is_empty():
 		return
-	_game_state.pending_expedition_summary = ""
 	_set_sidebar_text(summary)
 	if _expedition_summary_dialog != null:
 		_expedition_summary_dialog.dialog_text = summary

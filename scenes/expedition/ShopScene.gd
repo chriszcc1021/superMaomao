@@ -137,7 +137,7 @@ func _on_buy_pressed(idx: int, price: int, card_def: Dictionary) -> void:
 		return
 	if not game_state.spend_coins(price):
 		return
-	game_state.expedition_shop_cards.append(card_def)
+	game_state.add_expedition_shop_card(card_def)
 	_purchased = true
 	_update_after_purchase()
 

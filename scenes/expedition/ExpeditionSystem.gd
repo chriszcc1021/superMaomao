@@ -122,7 +122,7 @@ func finish_expedition(game_state: Node, event_bus: Node, success: bool, battle_
 		else:
 			_write_active_genes(cat, game_state.expedition_active_genes)
 			cat.status = GameConstants.LIFECYCLE_STATUS_IDLE
-	game_state.pending_expedition_summary = _build_expedition_summary(cat, success, reward, battle_result)
+	game_state.set_pending_expedition_summary(_build_expedition_summary(cat, success, reward, battle_result))
 	game_state.clear_expedition_state()
 	if event_bus != null:
 		event_bus.expedition_ended.emit(success, reward)
