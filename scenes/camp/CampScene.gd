@@ -9,6 +9,7 @@ const CampDaySummaryScript := preload("res://scenes/camp/CampDaySummary.gd")
 const CampBuildingPresenterScript := preload("res://scenes/camp/CampBuildingPresenter.gd")
 const CampCatListPresenterScript := preload("res://scenes/camp/CampCatListPresenter.gd")
 const CampCatVisualControllerScript := preload("res://scenes/camp/CampCatVisualController.gd")
+const CampAssignmentControllerScript := preload("res://scenes/camp/CampAssignmentController.gd")
 const StarterOverlayControllerScript := preload("res://scenes/camp/ui/StarterOverlayController.gd")
 
 const BUILDING_SCENES := {
@@ -59,6 +60,7 @@ var _day_manager: RefCounted = DayManagerScript.new()
 var _day_summary = CampDaySummaryScript.new()
 var _building_presenter = CampBuildingPresenterScript.new()
 var _cat_list_presenter = CampCatListPresenterScript.new()
+var _assignment_controller = CampAssignmentControllerScript.new()
 var _cat_visual_controller = null
 var _speed_btn: Button = null  # 动态创建的速度切换按钮
 
@@ -277,13 +279,6 @@ func _on_upgrade_building(building_id: String) -> void:
 		# 刷新当前 sidebar 显示
 		_show_building_sidebar(building_id)
 
-func _count_assigned_cats(building_id: String) -> int:
-	var count: int = 0
-	for cat: CatData in _game_state.get_living_cats():
-		if str(cat.assigned_building) == building_id:
-			count += 1
-	return count
-
 func _init_action_btn_container() -> void:
 	# 在 CatListUI/VBox 下创建按钮容器（紧贴文字区域下方）
 	var vbox: Node = get_node_or_null("UI/CatListUI/VBox")
@@ -326,89 +321,15 @@ func _open_nursery_breeding() -> void:
 		_breeding_ui.call("refresh")
 
 func _on_cat_drop_requested(cat: CatData, world_pos: Vector2) -> void:
-	var nearest_id: String = ""
-	var nearest_dist: float = 70.0
-	for building_id: String in BUILDING_LAYOUT.keys():
-		if not _game_state.has_building(building_id):
-			continue
-		var dist: float = world_pos.distance_to(BUILDING_LAYOUT[building_id])
-		if dist < nearest_dist:
-			nearest_dist = dist
-			nearest_id = building_id
-
-	# ── 死亡猫：只能拖进墓地 ──────────────────────────────────────────────────
-	if cat.status == GameConstants.LIFECYCLE_STATUS_DEAD:
-		if nearest_id == "cemetery" and _game_state.has_building("cemetery"):
-			var bio: String = _game_state.bury_cat(cat.id)
-			if not bio.is_empty():
-				_set_sidebar_text(bio)
+	var result: Dictionary = _assignment_controller.handle_cat_drop(cat, world_pos, _game_state, BUILDING_LAYOUT)
+	if result.has("sidebar_text"):
+		_set_sidebar_text(str(result["sidebar_text"]))
+	if bool(result.get("open_nursery", false)):
+		_open_nursery_breeding()
+	if bool(result.get("refresh_all", false)):
 		_refresh_all()
-		return
-
-	# ── 病态猫：只能拖进医院 ──────────────────────────────────────────────────
-	if cat.status == GameConstants.LIFECYCLE_STATUS_RETIRED:
-		cat.assigned_building = ""
-		_set_sidebar_text("退休的猫不能再工作、繁育或出征。")
+	elif bool(result.get("refresh_cat_nodes", false)):
 		_refresh_cat_nodes()
-		return
-
-	if cat.health != GameConstants.HEALTH_STATE_HEALTHY:
-		if nearest_id == "hospital" and _game_state.has_building("hospital"):
-			cat.assigned_building = "hospital"
-			_set_sidebar_text("🏥 %s 已送入医院治疗。" % cat.cat_name)
-		else:
-			_set_sidebar_text("⚠️ 病猫只能送入医院治疗！")
-		_refresh_cat_nodes()
-		return
-
-	if _game_state.has_method("is_cat_breeding") and _game_state.is_cat_breeding(cat):
-		if nearest_id != "nursery":
-			_set_sidebar_text("繁育中的猫必须留在产房。")
-			_refresh_cat_nodes()
-			return
-		_open_nursery_breeding()
-		_refresh_cat_nodes()
-		return
-
-	if nearest_id.is_empty():
-		cat.assigned_building = ""
-		_refresh_cat_nodes()
-		return
-
-	if cat.assigned_building == nearest_id:
-		cat.assigned_building = ""
-		_refresh_cat_nodes()
-		return
-
-	var cap: int = _get_building_worker_cap(nearest_id)
-	var current: int = _count_assigned_cats(nearest_id)
-	if current >= cap:
-		var old_id: String = str(cat.assigned_building)
-		if not old_id.is_empty() and old_id != nearest_id:
-			var old_cap: int = _get_building_worker_cap(old_id)
-			var old_count: int = _count_assigned_cats(old_id) - 1
-			if old_count < old_cap:
-				# Bug fix: 执行分配后再返回，之前缺少赋值直接 return
-				cat.assigned_building = nearest_id
-				_refresh_cat_nodes()
-				return
-		cat.assigned_building = ""
-		_refresh_cat_nodes()
-		return
-
-	cat.assigned_building = nearest_id
-	if nearest_id == "nursery":
-		_open_nursery_breeding()
-	_refresh_cat_nodes()
-
-func _get_building_worker_cap(building_id: String) -> int:
-	if building_id == "fortune_cat":
-		var level: int = int(_game_state.get_building_level("fortune_cat"))
-		return int(GameConstants.FORTUNE_CAT_MAX_WORKERS_BY_LEVEL.get(level, 1))
-	var base_cap: Variant = GameConstants.BUILDING_WORKER_CAP.get(building_id, null)
-	if base_cap != null:
-		return int(base_cap)
-	return 999
 
 func _on_next_day_pressed() -> void:
 	var summary := _run_day_advance()

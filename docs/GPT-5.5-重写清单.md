@@ -58,7 +58,7 @@
 ### Phase 1：拆分营地场景
 
 - [x] 从 `CampScene.gd` 中拆出建筑展示 / 按钮组装逻辑。
-- [ ] 从 `CampScene.gd` 中拆出建筑点击 / 拖拽交互逻辑。
+- [x] 从 `CampScene.gd` 中拆出建筑点击 / 拖拽交互逻辑。
 - [x] 从 `CampScene.gd` 中拆出猫咪列表和猫咪节点刷新逻辑。
 - [x] 从 `CampScene.gd` 中拆出初始选猫 overlay。
 - [x] 从 `CampScene.gd` 中拆出日结算展示逻辑。
@@ -73,11 +73,11 @@
 
 ### Phase 2：拆分战斗场景
 
-- [ ] 从 `BattleScene.gd` 中拆出卡牌抽取和应用逻辑。
-- [ ] 从 `BattleScene.gd` 中拆出基因选择 / 替换弹窗逻辑。
-- [ ] 从 `BattleScene.gd` 中拆出远征 buff 应用逻辑。
-- [ ] 从 `BattleScene.gd` 中拆出战斗结算结果组装逻辑。
-- [ ] 保留 `PlayerCat`、`WeaponSystem`、`SpawnManager` 的现有职责边界。
+- [x] 从 `BattleScene.gd` 中拆出卡牌抽取和应用逻辑。
+- [x] 从 `BattleScene.gd` 中拆出基因选择 / 替换弹窗逻辑。
+- [x] 从 `BattleScene.gd` 中拆出远征 buff 应用逻辑。
+- [x] 从 `BattleScene.gd` 中拆出战斗结算结果组装逻辑。
+- [x] 保留 `PlayerCat`、`WeaponSystem`、`SpawnManager` 的现有职责边界。
 
 验证标准：
 

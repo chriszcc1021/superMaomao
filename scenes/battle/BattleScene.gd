@@ -1,11 +1,14 @@
 extends Node2D
 
-const WeaponCards   := preload("res://data/cards/weapon_cards.gd")
-const BuffCards     := preload("res://data/cards/buff_cards.gd")
 const FishItem      := preload("res://scenes/battle/entities/FishItem.gd")
 const CatData       := preload("res://resources/CatData.gd")
 const CardData      := preload("res://resources/CardData.gd")
 const GameConstants := preload("res://data/constants.gd")
+const BattleCardControllerScript := preload("res://scenes/battle/BattleCardController.gd")
+const BattleExpeditionBuffsScript := preload("res://scenes/battle/BattleExpeditionBuffs.gd")
+const BattleResultBuilderScript := preload("res://scenes/battle/BattleResultBuilder.gd")
+const BattleGeneSelectorScript := preload("res://scenes/battle/BattleGeneSelector.gd")
+const BattleGenePopupControllerScript := preload("res://scenes/battle/BattleGenePopupController.gd")
 
 @onready var _player_cat: Node2D = $World/PlayerCat
 @onready var _enemies_root: Node2D = $World/Enemies
@@ -27,9 +30,11 @@ var _battle_time_left: float = GameConstants.BATTLE_NORMAL_DURATION
 var _level: int = 1
 var _fish: int = 0        # 当前等级内已积累 XP
 var _xp_to_next: int = 0
-var _cards: Array[CardData] = []
-var _card_by_id: Dictionary = {}
-var _card_meta_by_id: Dictionary = {}
+var _card_controller = BattleCardControllerScript.new()
+var _expedition_buffs = BattleExpeditionBuffsScript.new()
+var _result_builder = BattleResultBuilderScript.new()
+var _gene_selector = BattleGeneSelectorScript.new()
+var _gene_popup_controller = BattleGenePopupControllerScript.new()
 var _active_genes_gained: Array[String] = []  # 本场战斗中写入基因槽的基因
 
 var _elite_target: Node = null
@@ -61,23 +66,7 @@ func _ready() -> void:
 		event_bus.battle_started.emit()
 
 func _load_shop_cards() -> void:
-	# 将远征商店购买的卡牌作为战斗初始卡牌加载
-	var game_state := _get_game_state()
-	if game_state == null:
-		return
-	for card_def: Dictionary in game_state.expedition_shop_cards:
-		var card := _build_card(card_def)
-		_cards.append(card)
-		_card_by_id[card.id] = card
-		# 立即应用效果
-		if card.card_type == "weapon":
-			_player_cat.get_weapon_system().apply_weapon_card(card)
-		else:
-			var meta: Dictionary = _card_meta_by_id.get(card.id, {})
-			var effect_key: String = str(meta.get("effect_key", ""))
-			var per_stack: float = float(meta.get("per_stack", 0.0))
-			if not effect_key.is_empty() and per_stack > 0.0:
-				_player_cat.apply_buff(effect_key, per_stack)
+	_card_controller.load_shop_cards(_get_game_state(), _player_cat)
 
 func _process(delta: float) -> void:
 	if _battle_over or _battle_paused:
@@ -130,63 +119,12 @@ func _cat_has_gene(gene_id: String) -> bool:
 
 ## 应用远征 buff（奇遇事件写入 expedition_buffs 的效果）
 func _apply_expedition_buffs() -> void:
-	var game_state := _get_game_state()
-	if game_state == null:
-		return
-	var consume_list: Array = []  # 一次性 buff 需要消耗掉
-	for buff in game_state.expedition_buffs:
-		# 支持旧版字符串格式和新版字典格式
-		var effect_key := ""
-		var value := 0.0
-		if buff is Dictionary:
-			effect_key = str(buff.get("effect_key", ""))
-			value = float(buff.get("value", 0.0))
-		elif buff is String:
-			# 旧版格式："effect_key:value"
-			var parts := str(buff).split(":")
-			if parts.size() == 2:
-				effect_key = parts[0]
-				value = float(parts[1])
-		if effect_key.is_empty():
-			continue
-		match effect_key:
-			"attack":
-				_player_cat.apply_buff("attack", value)
-			"crit_rate":
-				_player_cat.apply_buff("crit_rate", value)
-			"crit_mult":
-				_player_cat.apply_buff("crit_rate", value * 0.5)  # 暴击伤害用 crit_rate 近似
-			"move_speed":
-				_player_cat.apply_buff("move_speed", value)
-			"aspd":
-				if _player_cat.has_method("get_weapon_system"):
-					_player_cat.get_weapon_system().call("set_dynamic_bonuses", value, 0.0)
-			"max_hp":
-				_player_cat.apply_buff("max_hp", value)
-			"dmg_taken_next":
-				# 一次性：存到临时变量供 _on_player_hp_changed 处理
-				_dmg_taken_modifier = 1.0 + value
-				consume_list.append(buff)
-			"immediate_hp_restore_pct":
-				# 立即按最大HP百分比回血（value=0.25 → 回25%HP）
-				_player_cat.heal(_player_cat.max_hp * value)
-				consume_list.append(buff)
-			"immediate_hp_cost_pct":
-				# 立即按最大HP百分比扣血（不致死，最低保留1HP）
-				var dmg: float = float(_player_cat.max_hp) * value
-				var safe_dmg: float = minf(dmg, float(_player_cat.current_hp) - 1.0)
-				if safe_dmg > 0.0:
-					_player_cat.take_damage(safe_dmg)
-				consume_list.append(buff)
-			"regen_per_battle":
-				# 每场战斗开始回 N% HP（value=0.05 → 回5%HP）
-				_player_cat.heal(_player_cat.max_hp * value)
-			"grant_card_on_battle_start":
-				_grant_bonus_card()
-				consume_list.append(buff)
-	# 移除已消耗的一次性 buff
-	for used in consume_list:
-		game_state.expedition_buffs.erase(used)
+	_dmg_taken_modifier = _expedition_buffs.apply(
+		_get_game_state(),
+		_player_cat,
+		_grant_bonus_card,
+		_dmg_taken_modifier
+	)
 
 ## 赠送一张稀有卡（继承遗志/仔细研究等）
 func _grant_bonus_card() -> void:
@@ -363,111 +301,21 @@ func _on_card_chosen(card: CardData) -> void:
 	_refresh_hud()
 
 func _apply_resonance_boost() -> void:
-	for card: CardData in _cards:
-		if str(card.card_type) == "buff":
-			for i: int in card.values.size():
-				card.values[i] = float(card.values[i]) * 1.05
+	_card_controller.apply_resonance_boost()
 
 func _apply_card(card: CardData) -> void:
-	var existing: CardData = _card_by_id.get(card.id, null)
-	if existing == null:
-		_cards.append(card)
-		_card_by_id[card.id] = card
-		existing = card
-	elif card.card_type != "weapon" and (existing as CardData).can_stack():
-		(existing as CardData).add_stack()
-
-	if card.card_type == "weapon":
-		_player_cat.get_weapon_system().apply_weapon_card(existing)
-		return
-
-	var meta: Dictionary = _card_meta_by_id.get(card.id, {})
-	var effect_key: String = str(meta.get("effect_key", ""))
-	var per_stack: float = float(meta.get("per_stack", 0.0))
-	if not effect_key.is_empty() and per_stack > 0.0:
-		_player_cat.apply_buff(effect_key, per_stack)
+	_card_controller.apply_card(card, _player_cat)
 
 func _roll_cards(force_weapon_only: bool) -> Array[CardData]:
-	var weapon_defs: Array[Dictionary] = WeaponCards.get_pool()
-	var buff_defs: Array[Dictionary] = BuffCards.get_pool()
-	var available: Array[Dictionary] = []
-
-	for def: Dictionary in weapon_defs:
-		if _can_offer_weapon(def):
-			available.append(def)
-	if not force_weapon_only:
-		for def: Dictionary in buff_defs:
-			available.append(def)
-	if available.is_empty():
-		return []
-
-	available.shuffle()
-	var result: Array[CardData] = []
-	for def: Dictionary in available:
-		var card := _build_card(def)
-		result.append(card)
-		if result.size() >= GameConstants.BATTLE_CARD_CHOICE_COUNT:
-			break
-	return result
-
-func _can_offer_weapon(def: Dictionary) -> bool:
-	var id: String = str(def.get("id", ""))
-	if _card_by_id.has(id):
-		var existing: CardData = _card_by_id[id]
-		return existing.can_stack()
-	var weapon_count := 0
-	for card: CardData in _cards:
-		if card.card_type == "weapon":
-			weapon_count += 1
-	return weapon_count < GameConstants.BATTLE_WEAPON_SLOT_CAP
-
-func _build_card(def: Dictionary) -> CardData:
-	var card := CardData.new()
-	card.id = str(def.get("id", ""))
-	card.card_name = str(def.get("name", "card"))
-	card.card_type = str(def.get("card_type", "weapon"))
-	card.rarity = str(def.get("rarity", "grey"))
-	card.description = str(def.get("description", ""))
-	card.max_stacks = int(def.get("max_stacks", 3))
-	_card_meta_by_id[card.id] = def
-	return card
+	return _card_controller.roll_cards(force_weapon_only)
 
 ## ──── 基因三选一弹窗 ────
 
 func _roll_gene_choices() -> Array[String]:
-	var cat_has_active := _cat_has_active_gene()
-	# 按稀有度权重构建候选池（重复入池）
-	var pool: Array[String] = []
-	for gene_id: String in GameConstants.ALL_SPECIAL_GENE_POOL:
-		var is_active := GameConstants.ACTIVE_SKILL_GENE_POOL.has(gene_id)
-		if is_active and cat_has_active:
-			continue  # 已有主动技能，过滤掉主动基因
-		var rarity: String = str(GameConstants.GENE_RARITY.get(gene_id, "grey"))
-		var weight: int = int(GameConstants.GENE_RARITY_WEIGHT.get(rarity, 3))
-		for _w in weight:
-			pool.append(gene_id)
-	pool.shuffle()
-	# 取 3 个不重复
-	var seen: Dictionary = {}
-	var result: Array[String] = []
-	for gene_id: String in pool:
-		if not seen.has(gene_id):
-			seen[gene_id] = true
-			result.append(gene_id)
-			if result.size() >= 3:
-				break
-	return result
+	return _gene_selector.roll_choices(_selected_cat, _active_genes_gained)
 
 func _cat_has_active_gene() -> bool:
-	if _selected_cat == null:
-		return false
-	for slot_gene: String in [_selected_cat.gene_slot_1, _selected_cat.gene_slot_2, _selected_cat.gene_slot_3]:
-		if GameConstants.ACTIVE_SKILL_GENE_POOL.has(slot_gene):
-			return true
-	for gene_id: String in _active_genes_gained:
-		if GameConstants.ACTIVE_SKILL_GENE_POOL.has(gene_id):
-			return true
-	return false
+	return _gene_selector.has_active_gene(_selected_cat, _active_genes_gained)
 
 func _show_gene_choice_popup() -> void:
 	_battle_paused = true
@@ -477,125 +325,31 @@ func _show_gene_choice_popup() -> void:
 
 	var gene_choices := _roll_gene_choices()
 	var cat_name: String = _selected_cat.cat_name if _selected_cat != null else "你的猫"
-
-	_gene_popup = Control.new()
-	_gene_popup.set_anchors_preset(Control.PRESET_FULL_RECT)
-	$UI.add_child(_gene_popup)
-
-	var bg := ColorRect.new()
-	bg.color = Color(0.0, 0.0, 0.0, 0.78)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_gene_popup.add_child(bg)
-
-	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.custom_minimum_size = Vector2(480.0, 320.0)
-	panel.position = Vector2(-240.0, -160.0)
-	_gene_popup.add_child(panel)
-
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 10)
-	panel.add_child(vb)
-
-	var title_lbl := Label.new()
-	title_lbl.text = "🎉 %s 升至 Lv%d！选择一个技能！" % [cat_name, _level]
-	title_lbl.add_theme_font_size_override("font_size", 16)
-	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	@warning_ignore("int_as_enum_without_cast")
-	title_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vb.add_child(title_lbl)
-
-	var sep := HSeparator.new()
-	vb.add_child(sep)
-
-	for gene_id: String in gene_choices:
-		var info: Dictionary = GameConstants.GENE_DISPLAY_ZH.get(gene_id, {"name": gene_id, "desc": ""})
-		var rarity: String = str(GameConstants.GENE_RARITY.get(gene_id, "grey"))
-		var rarity_zh: String = str(GameConstants.RARITY_DISPLAY_ZH.get(rarity, rarity))
-		var is_active := GameConstants.ACTIVE_SKILL_GENE_POOL.has(gene_id)
-		var type_tag := "[主动]" if is_active else "[被动]"
-		var btn := Button.new()
-		btn.text = "%s【%s】%s\n%s" % [str(info.get("name", gene_id)), rarity_zh, type_tag, str(info.get("desc", ""))]
-		@warning_ignore("int_as_enum_without_cast")
-		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		btn.custom_minimum_size = Vector2(0.0, 60.0)
-		btn.pressed.connect(_on_gene_chosen.bind(gene_id))
-		vb.add_child(btn)
+	_gene_popup = _gene_popup_controller.show_choice($UI, cat_name, _level, gene_choices, _on_gene_chosen)
 
 func _on_gene_chosen(gene_id: String) -> void:
-	# 找空槽写入
-	if _selected_cat != null:
-		if str(_selected_cat.gene_slot_1).is_empty():
-			_selected_cat.gene_slot_1 = gene_id
-			_active_genes_gained.append(gene_id)
-			_close_gene_popup_and_continue()
-			return
-		if str(_selected_cat.gene_slot_2).is_empty():
-			_selected_cat.gene_slot_2 = gene_id
-			_active_genes_gained.append(gene_id)
-			_close_gene_popup_and_continue()
-			return
-		if str(_selected_cat.gene_slot_3).is_empty():
-			_selected_cat.gene_slot_3 = gene_id
-			_active_genes_gained.append(gene_id)
-			_close_gene_popup_and_continue()
-			return
-	# 三槽全满 → 切换到替换界面
+	if _gene_selector.write_to_empty_slot(_selected_cat, _active_genes_gained, gene_id):
+		_close_gene_popup_and_continue()
+		return
 	_show_gene_replace_view(gene_id)
 
 func _show_gene_replace_view(new_gene_id: String) -> void:
-	# 清空原弹窗内容，重建为替换界面
-	if _gene_popup == null:
-		return
-	# 找到 panel 并重建
-	for child: Node in _gene_popup.get_children():
-		if child is PanelContainer:
-			child.queue_free()
-	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.custom_minimum_size = Vector2(420.0, 280.0)
-	panel.position = Vector2(-210.0, -140.0)
-	_gene_popup.add_child(panel)
-
-	var vb := VBoxContainer.new()
-	panel.add_child(vb)
-	var info: Dictionary = GameConstants.GENE_DISPLAY_ZH.get(new_gene_id, {"name": new_gene_id})
-	var lbl := Label.new()
-	lbl.text = "技能槽已满，选择替换或放弃「%s」：" % str(info.get("name", new_gene_id))
-	@warning_ignore("int_as_enum_without_cast")
-	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(lbl)
-
+	var slot_genes: Array[String] = []
 	for slot_idx in 3:
-		var slot_gene := _get_slot_gene(slot_idx)
-		var slot_info: Dictionary = GameConstants.GENE_DISPLAY_ZH.get(slot_gene, {"name": slot_gene})
-		var btn := Button.new()
-		btn.text = "替换 槽%d：「%s」" % [slot_idx + 1, str(slot_info.get("name", slot_gene))]
-		btn.pressed.connect(_on_gene_replace_chosen.bind(slot_idx, new_gene_id))
-		vb.add_child(btn)
-
-	var abandon_btn := Button.new()
-	abandon_btn.text = "放弃「%s」" % str(info.get("name", new_gene_id))
-	abandon_btn.pressed.connect(_on_gene_abandoned)
-	vb.add_child(abandon_btn)
+		slot_genes.append(_get_slot_gene(slot_idx))
+	_gene_popup_controller.show_replace(
+		_gene_popup,
+		new_gene_id,
+		slot_genes,
+		_on_gene_replace_chosen,
+		_on_gene_abandoned
+	)
 
 func _get_slot_gene(slot_idx: int) -> String:
-	if _selected_cat == null:
-		return ""
-	match slot_idx:
-		0: return str(_selected_cat.gene_slot_1)
-		1: return str(_selected_cat.gene_slot_2)
-		2: return str(_selected_cat.gene_slot_3)
-	return ""
+	return _gene_selector.get_slot_gene(_selected_cat, slot_idx)
 
 func _on_gene_replace_chosen(slot_idx: int, new_gene_id: String) -> void:
-	if _selected_cat != null:
-		match slot_idx:
-			0: _selected_cat.gene_slot_1 = new_gene_id
-			1: _selected_cat.gene_slot_2 = new_gene_id
-			2: _selected_cat.gene_slot_3 = new_gene_id
-	_active_genes_gained.append(new_gene_id)
+	_gene_selector.replace_slot(_selected_cat, _active_genes_gained, slot_idx, new_gene_id)
 	_close_gene_popup_and_continue()
 
 func _on_gene_abandoned() -> void:
@@ -630,10 +384,11 @@ func _refresh_hud() -> void:
 	if _battle_time_left >= 0.0:
 		timer_text = "时间: %d秒" % int(ceil(_battle_time_left))
 	var cards_text := "已选卡牌:\n"
-	if _cards.is_empty():
+	var cards: Array[CardData] = _card_controller.get_cards()
+	if cards.is_empty():
 		cards_text += "无"
 	else:
-		for card: CardData in _cards:
+		for card: CardData in cards:
 			cards_text += "- %s x%d\n" % [card.card_name, card.stack_count]
 	if _player_cat != null and _player_cat.has_method("set_xp_progress"):
 		_player_cat.call("set_xp_progress", _fish, _xp_to_next)
@@ -666,15 +421,13 @@ func _finish_battle(victory: bool) -> void:
 	var event_bus := _get_event_bus()
 	if event_bus != null:
 		event_bus.battle_ended.emit(victory)
-	var result := {
-		"victory": victory,
-		"battle_node_type": _node_type,
-		"battle_wins": 1 if victory else 0,
-		"active_genes_gained": _active_genes_gained.duplicate(),
-		"level_reached": _level,
-		"cat_retired": _battle_failed_by_death,
-		"failure_reason": "battle_death" if _battle_failed_by_death else ""
-	}
+	var result: Dictionary = _result_builder.build(
+		victory,
+		_node_type,
+		_active_genes_gained,
+		_level,
+		_battle_failed_by_death
+	)
 	var scene_manager := _get_scene_manager()
 	if scene_manager != null:
 		scene_manager.return_from_battle(result)
