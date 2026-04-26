@@ -184,10 +184,38 @@ func _draw() -> void:
 		shake = Vector2(sin(_elapsed * 20.0) * 2.5, 0.0)
 
 	var r := 14.0 * scale_mult
+	var outline := Color(0.16, 0.11, 0.09, 1.0)
+	draw_circle(shake + Vector2(0.0, 8.0) * scale_mult, r * 0.95, Color(0.0, 0.0, 0.0, 0.14))
+	draw_circle(shake, r + 2.4 * scale_mult, outline)
 	draw_circle(shake, r, cat_color)
+	var left_ear := PackedVector2Array([
+		shake + Vector2(-12.0, -9.0) * scale_mult,
+		shake + Vector2(-7.0, -23.0) * scale_mult,
+		shake + Vector2(-2.0, -11.0) * scale_mult,
+	])
+	var right_ear := PackedVector2Array([
+		shake + Vector2(12.0, -9.0) * scale_mult,
+		shake + Vector2(7.0, -23.0) * scale_mult,
+		shake + Vector2(2.0, -11.0) * scale_mult,
+	])
+	draw_colored_polygon(left_ear, outline)
+	draw_colored_polygon(right_ear, outline)
+	draw_colored_polygon(PackedVector2Array([
+		shake + Vector2(-9.0, -9.0) * scale_mult,
+		shake + Vector2(-7.0, -17.0) * scale_mult,
+		shake + Vector2(-3.5, -10.0) * scale_mult,
+	]), cat_color.lightened(0.2))
+	draw_colored_polygon(PackedVector2Array([
+		shake + Vector2(9.0, -9.0) * scale_mult,
+		shake + Vector2(7.0, -17.0) * scale_mult,
+		shake + Vector2(3.5, -10.0) * scale_mult,
+	]), cat_color.lightened(0.2))
 	_draw_eyes(shake, scale_mult)
-	draw_circle(shake + Vector2(-10.0, -12.0) * scale_mult, 4.5 * scale_mult, cat_color)
-	draw_circle(shake + Vector2(10.0, -12.0) * scale_mult, 4.5 * scale_mult, cat_color)
+	draw_circle(shake + Vector2(0.0, 3.0) * scale_mult, 1.7 * scale_mult, Color(0.18, 0.1, 0.1, 1.0))
+	draw_line(shake + Vector2(-9.0, 2.0) * scale_mult, shake + Vector2(-20.0, 0.0) * scale_mult, outline, 1.2 * scale_mult)
+	draw_line(shake + Vector2(9.0, 2.0) * scale_mult, shake + Vector2(20.0, 0.0) * scale_mult, outline, 1.2 * scale_mult)
+	draw_line(shake + Vector2(-9.0, 6.0) * scale_mult, shake + Vector2(-20.0, 7.0) * scale_mult, outline, 1.2 * scale_mult)
+	draw_line(shake + Vector2(9.0, 6.0) * scale_mult, shake + Vector2(20.0, 7.0) * scale_mult, outline, 1.2 * scale_mult)
 
 	if _dragging:
 		draw_arc(shake, r + 3.0, 0.0, TAU, 32, Color(1.0, 1.0, 1.0, 0.5), 2.0)

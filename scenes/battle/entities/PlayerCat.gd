@@ -304,20 +304,54 @@ func _direction_to_nearest_enemy() -> Vector2:
 	return (nearest.global_position - global_position).normalized()
 
 func _draw() -> void:
-	var cat_color := Color(0.98, 0.73, 0.31, 1.0)
+	var cat_color := _battle_cat_color()
 	if _sleeping:
 		cat_color = Color(0.6, 0.6, 0.9, 1.0)  # 睡觉变蓝紫
 	elif _revive_iframes > 0.0 or _iframes_timer > 0.0:
 		cat_color = Color(1.0, 1.0, 0.5, 1.0)  # 无敌闪黄
-	draw_circle(Vector2.ZERO, 14.0, cat_color)
-	draw_circle(Vector2(-4.0, -3.0), 2.0, Color.BLACK)
-	draw_circle(Vector2(4.0, -3.0), 2.0, Color.BLACK)
+	var outline := Color(0.16, 0.11, 0.09, 1.0)
+	draw_circle(Vector2(0.0, 8.0), 15.0, Color(0.0, 0.0, 0.0, 0.16))
+	draw_circle(Vector2.ZERO, 17.0, outline)
+	draw_circle(Vector2.ZERO, 14.5, cat_color)
+	var left_ear := PackedVector2Array([Vector2(-13.0, -9.0), Vector2(-8.0, -24.0), Vector2(-2.0, -12.0)])
+	var right_ear := PackedVector2Array([Vector2(13.0, -9.0), Vector2(8.0, -24.0), Vector2(2.0, -12.0)])
+	draw_colored_polygon(left_ear, outline)
+	draw_colored_polygon(right_ear, outline)
+	draw_colored_polygon(PackedVector2Array([Vector2(-10.0, -9.0), Vector2(-7.8, -18.0), Vector2(-3.5, -11.0)]), cat_color.lightened(0.18))
+	draw_colored_polygon(PackedVector2Array([Vector2(10.0, -9.0), Vector2(7.8, -18.0), Vector2(3.5, -11.0)]), cat_color.lightened(0.18))
+	draw_circle(Vector2(-5.0, -3.5), 2.4, Color.BLACK)
+	draw_circle(Vector2(5.0, -3.5), 2.4, Color.BLACK)
+	draw_circle(Vector2(-4.2, -4.3), 0.8, Color.WHITE)
+	draw_circle(Vector2(5.8, -4.3), 0.8, Color.WHITE)
+	draw_circle(Vector2(0.0, 2.0), 1.8, Color(0.18, 0.1, 0.1, 1.0))
+	draw_arc(Vector2(-3.0, 3.0), 4.0, 0.1, 1.35, 8, outline, 1.2)
+	draw_arc(Vector2(3.0, 3.0), 4.0, 1.8, 3.05, 8, outline, 1.2)
+	draw_line(Vector2(-10.0, 2.0), Vector2(-21.0, -1.0), outline, 1.2)
+	draw_line(Vector2(10.0, 2.0), Vector2(21.0, -1.0), outline, 1.2)
+	draw_line(Vector2(-10.0, 6.0), Vector2(-21.0, 7.0), outline, 1.2)
+	draw_line(Vector2(10.0, 6.0), Vector2(21.0, 7.0), outline, 1.2)
 	draw_rect(Rect2(Vector2(-18, -24), Vector2(36, 4)), Color(0.15, 0.15, 0.15), true)
 	var hp_ratio: float = clamp(current_hp / max(max_hp, 1.0), 0.0, 1.0)
 	draw_rect(Rect2(Vector2(-18, -24), Vector2(36 * hp_ratio, 4)), Color(0.2, 0.9, 0.25), true)
 	draw_rect(Rect2(Vector2(-18, -18), Vector2(36, 3)), Color(0.12, 0.12, 0.18), true)
 	var xp_ratio: float = clamp(float(_xp_progress) / maxf(float(_xp_to_next), 1.0), 0.0, 1.0)
 	draw_rect(Rect2(Vector2(-18, -18), Vector2(36 * xp_ratio, 3)), Color(0.3, 0.65, 1.0), true)
+
+func _battle_cat_color() -> Color:
+	if cat_data == null:
+		return Color(0.98, 0.73, 0.31, 1.0)
+	match cat_data.breed:
+		"ragdoll":
+			return Color(0.9, 0.84, 0.72, 1.0)
+		"siamese":
+			return Color(0.76, 0.64, 0.48, 1.0)
+		"orange":
+			return Color(0.98, 0.62, 0.2, 1.0)
+		"black":
+			return Color(0.16, 0.16, 0.18, 1.0)
+		"british":
+			return Color(0.62, 0.68, 0.72, 1.0)
+	return Color(0.98, 0.73, 0.31, 1.0)
 
 func _initial_hp_for_breed(breed_id: String) -> float:
 	return float(GameConstants.BATTLE_PLAYER_HP_BY_BREED.get(breed_id, 4.0))

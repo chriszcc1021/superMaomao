@@ -94,17 +94,60 @@ func apply_knockback(impulse: Vector2) -> void:
 
 func _draw() -> void:
 	var col := tint_color
-	# 减速时变蓝
 	if _slow_timer > 0.0:
 		col = tint_color.lerp(Color(0.4, 0.7, 1.0, 1.0), 0.5)
-	draw_circle(Vector2.ZERO, 12.0, col)
-	draw_circle(Vector2(-4.0, -2.0), 2.0, Color.BLACK)
-	draw_circle(Vector2(4.0, -2.0), 2.0, Color.BLACK)
-	# 只有精英怪和 Boss 才显示血条
+	var outline := Color(0.12, 0.09, 0.08, 1.0)
+	var scale_mult := 1.0
+	if is_boss:
+		scale_mult = 1.75
+	elif is_elite or enemy_type == "tank_gorilla":
+		scale_mult = 1.35
+	draw_circle(Vector2(0.0, 7.0 * scale_mult), 12.0 * scale_mult, Color(0.0, 0.0, 0.0, 0.18))
+	draw_circle(Vector2.ZERO, 13.5 * scale_mult, outline)
+	draw_circle(Vector2.ZERO, 11.5 * scale_mult, col)
+	draw_circle(Vector2(-8.0, -4.0) * scale_mult, 5.0 * scale_mult, outline)
+	draw_circle(Vector2(8.0, -4.0) * scale_mult, 5.0 * scale_mult, outline)
+	draw_circle(Vector2(-8.0, -4.0) * scale_mult, 3.2 * scale_mult, col.lightened(0.16))
+	draw_circle(Vector2(8.0, -4.0) * scale_mult, 3.2 * scale_mult, col.lightened(0.16))
+	draw_circle(Vector2(-4.0, -2.0) * scale_mult, 1.8 * scale_mult, Color.BLACK)
+	draw_circle(Vector2(4.0, -2.0) * scale_mult, 1.8 * scale_mult, Color.BLACK)
+	draw_circle(Vector2(0.0, 2.5) * scale_mult, 1.6 * scale_mult, Color(0.12, 0.08, 0.06, 1.0))
+	draw_arc(Vector2(0.0, 3.0) * scale_mult, 5.0 * scale_mult, 0.25, PI - 0.25, 10, outline, 1.3 * scale_mult)
+	if enemy_type == "stone_monkey":
+		_draw_enemy_badge(Vector2(0.0, -14.0) * scale_mult, scale_mult, Color(0.72, 0.76, 0.78, 1.0))
+	elif enemy_type == "tank_gorilla":
+		draw_rect(Rect2(Vector2(-9.0, -18.0) * scale_mult, Vector2(18.0, 8.0) * scale_mult), Color(0.3, 0.3, 0.34, 1.0), true)
+	elif is_elite:
+		_draw_enemy_badge(Vector2(0.0, -16.0) * scale_mult, scale_mult, Color(0.86, 0.45, 1.0, 1.0))
+	elif is_boss:
+		_draw_crown(Vector2(0.0, -19.0) * scale_mult, scale_mult)
 	if show_hp_bar:
 		var hp_ratio: float = clamp(current_hp / max(max_hp, 1.0), 0.0, 1.0)
-		draw_rect(Rect2(Vector2(-14, -20), Vector2(28, 4)), Color(0.15, 0.15, 0.15), true)
-		draw_rect(Rect2(Vector2(-14, -20), Vector2(28 * hp_ratio, 4)), Color(0.25, 0.85, 0.25), true)
+		var bar_width := 32.0 * scale_mult
+		var bar_y := -26.0 * scale_mult
+		draw_rect(Rect2(Vector2(-bar_width * 0.5, bar_y), Vector2(bar_width, 4.0)), Color(0.15, 0.15, 0.15), true)
+		draw_rect(Rect2(Vector2(-bar_width * 0.5, bar_y), Vector2(bar_width * hp_ratio, 4.0)), Color(0.25, 0.85, 0.25), true)
+
+func _draw_enemy_badge(center: Vector2, scale_mult: float, color: Color) -> void:
+	var points := PackedVector2Array([
+		center + Vector2(0.0, -5.0) * scale_mult,
+		center + Vector2(5.0, 0.0) * scale_mult,
+		center + Vector2(0.0, 5.0) * scale_mult,
+		center + Vector2(-5.0, 0.0) * scale_mult,
+	])
+	draw_colored_polygon(points, color)
+
+func _draw_crown(center: Vector2, scale_mult: float) -> void:
+	var crown := PackedVector2Array([
+		center + Vector2(-10.0, 5.0) * scale_mult,
+		center + Vector2(-7.0, -5.0) * scale_mult,
+		center + Vector2(-2.0, 3.0) * scale_mult,
+		center + Vector2(0.0, -7.0) * scale_mult,
+		center + Vector2(2.0, 3.0) * scale_mult,
+		center + Vector2(7.0, -5.0) * scale_mult,
+		center + Vector2(10.0, 5.0) * scale_mult,
+	])
+	draw_colored_polygon(crown, Color(1.0, 0.76, 0.18, 1.0))
 
 func _resolve_color(id: String) -> Color:
 	match id:
