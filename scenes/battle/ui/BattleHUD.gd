@@ -1,5 +1,8 @@
 extends Control
 
+const UISkin := preload("res://scenes/common/UISkin.gd")
+
+@onready var _panel: PanelContainer = $Panel
 @onready var _hp_label: Label = $Panel/VBox/HpLabel
 @onready var _xp_label: Label = $Panel/VBox/XpLabel
 @onready var _level_label: Label = $Panel/VBox/LevelLabel
@@ -17,12 +20,19 @@ const XP_BAR_HEIGHT := 8.0
 const CARDS_LABEL_MIN_SIZE := Vector2(310.0, 96.0)
 
 func _ready() -> void:
+	_apply_skin()
 	_build_stat_bars()
 	_cards_label.custom_minimum_size = CARDS_LABEL_MIN_SIZE
 	_cards_label.fit_content = false
 	_cards_label.scroll_active = true
 	@warning_ignore("int_as_enum_without_cast")
 	_cards_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+func _apply_skin() -> void:
+	UISkin.apply_panel(_panel, true)
+	for label: Label in [_hp_label, _xp_label, _level_label, _timer_label]:
+		UISkin.apply_label(label, Color(0.98, 0.92, 0.78, 1.0))
+	UISkin.apply_rich_text(_cards_label, true)
 
 func _build_stat_bars() -> void:
 	var vbox: VBoxContainer = $Panel/VBox

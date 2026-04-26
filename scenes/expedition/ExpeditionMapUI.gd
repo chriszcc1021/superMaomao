@@ -6,10 +6,13 @@ const QuestionEvents    := preload("res://data/question_events.gd")
 const CatData           := preload("res://resources/CatData.gd")
 const GameConsts        := preload("res://data/constants.gd")
 const ArtIcon           := preload("res://scenes/common/ArtIcon.gd")
+const UISkin            := preload("res://scenes/common/UISkin.gd")
 const CAMP_SCENE_PATH   := "res://scenes/camp/CampScene.tscn"
+@onready var _panel: PanelContainer = $Panel
 @onready var _cat_option: OptionButton = $Panel/VBox/SetupRow/CatOption
 @onready var _start_button: Button = $Panel/VBox/SetupRow/StartButton
 @onready var _back_button: Button = $Panel/VBox/SetupRow/BackToCampButton
+@onready var _title_label: Label = $Panel/VBox/Title
 @onready var _layer_label: Label = $Panel/VBox/LayerLabel
 @onready var _status_label: Label = $Panel/VBox/StatusLabel
 @onready var _node_row: HBoxContainer = $Panel/VBox/NodeRow
@@ -21,6 +24,7 @@ var _system := ExpeditionSystem.new()
 
 func _ready() -> void:
 	randomize()
+	_apply_skin()
 	if not _start_button.pressed.is_connected(_on_start_pressed):
 		_start_button.pressed.connect(_on_start_pressed)
 	if not _back_button.pressed.is_connected(_on_back_pressed):
@@ -152,6 +156,7 @@ func _refresh_nodes() -> void:
 		var button := Button.new()
 		button.custom_minimum_size = Vector2(260.0, 120.0)
 		button.text = "\n\n" + str(node_data.get("label", "节点"))
+		UISkin.apply_button(button, _node_color(str(node_data.get("type", "battle_normal"))))
 		button.pressed.connect(_on_node_pressed.bind(idx))
 		_node_row.add_child(button)
 		var icon := ArtIcon.new()
@@ -159,6 +164,28 @@ func _refresh_nodes() -> void:
 		icon.size = Vector2(52.0, 52.0)
 		icon.position = Vector2(104.0, 14.0)
 		button.add_child(icon)
+
+func _apply_skin() -> void:
+	UISkin.apply_panel(_panel)
+	UISkin.apply_button(_start_button, Color(0.58, 0.74, 0.38, 1.0))
+	UISkin.apply_button(_back_button, Color(0.72, 0.58, 0.42, 1.0))
+	UISkin.apply_button(_cat_option, Color(0.92, 0.78, 0.52, 1.0))
+	UISkin.apply_label(_title_label)
+	UISkin.apply_label(_layer_label)
+	UISkin.apply_label(_status_label)
+	UISkin.apply_rich_text(_log_text)
+
+func _node_color(node_type: String) -> Color:
+	match node_type:
+		"battle_elite":
+			return Color(0.66, 0.48, 0.86, 1.0)
+		"battle_boss":
+			return Color(0.86, 0.38, 0.32, 1.0)
+		"event_question":
+			return Color(0.42, 0.66, 0.86, 1.0)
+		"shop":
+			return Color(0.86, 0.66, 0.34, 1.0)
+	return Color(0.58, 0.72, 0.42, 1.0)
 
 func _clear_nodes() -> void:
 	for child: Node in _node_row.get_children():

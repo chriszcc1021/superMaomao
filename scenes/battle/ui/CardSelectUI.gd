@@ -3,11 +3,13 @@ extends Control
 const CardData := preload("res://resources/CardData.gd")
 const GameConstants := preload("res://data/constants.gd")
 const ArtIcon := preload("res://scenes/common/ArtIcon.gd")
+const UISkin := preload("res://scenes/common/UISkin.gd")
 
 signal card_chosen(card: CardData)
 
 @onready var _title: Label = $Panel/VBox/Title
 @onready var _desc: Label = $Panel/VBox/Desc
+@onready var _panel: PanelContainer = $Panel
 @onready var _option_a: Button = $Panel/VBox/OptionA
 @onready var _option_b: Button = $Panel/VBox/OptionB
 @onready var _option_c: Button = $Panel/VBox/OptionC
@@ -17,6 +19,7 @@ var _option_icons: Array[ArtIcon] = []
 
 func _ready() -> void:
 	visible = false
+	_apply_skin()
 	_configure_text_layout()
 	_build_option_icons()
 	_option_a.pressed.connect(_on_option_pressed.bind(0))
@@ -45,6 +48,7 @@ func _set_button_text(button: Button, idx: int) -> void:
 	button.disabled = false
 	var rarity_text: String = str(GameConstants.RARITY_DISPLAY_ZH.get(card.rarity, card.rarity))
 	button.text = "      %s【%s】\n      %s" % [card.card_name, rarity_text, card.description]
+	UISkin.apply_card_button(button, card.rarity)
 	if idx < _option_icons.size():
 		_option_icons[idx].setup(card.id if not card.id.is_empty() else card.card_type, card.rarity)
 
@@ -70,3 +74,10 @@ func _build_option_icons() -> void:
 		icon.position = Vector2(14.0, 34.0)
 		button.add_child(icon)
 		_option_icons.append(icon)
+
+func _apply_skin() -> void:
+	UISkin.apply_panel(_panel, true)
+	UISkin.apply_label(_title, Color(1.0, 0.86, 0.42, 1.0))
+	UISkin.apply_label(_desc, Color(0.94, 0.9, 0.8, 1.0))
+	for button: Button in [_option_a, _option_b, _option_c]:
+		UISkin.apply_card_button(button, "grey")
