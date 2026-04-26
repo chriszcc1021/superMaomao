@@ -4,9 +4,10 @@ const GameConstants := preload("res://data/constants.gd")
 const CatData       := preload("res://resources/CatData.gd")
 const FloatingTextScript := preload("res://scenes/common/FloatingText.gd")
 
-const CatSpriteScene := preload("res://scenes/common/CatSprite.tscn")
 const DayManagerScript := preload("res://scenes/camp/DayManager.gd")
 const CampDaySummaryScript := preload("res://scenes/camp/CampDaySummary.gd")
+const CampCatListPresenterScript := preload("res://scenes/camp/CampCatListPresenter.gd")
+const CampCatVisualControllerScript := preload("res://scenes/camp/CampCatVisualController.gd")
 const StarterOverlayControllerScript := preload("res://scenes/camp/ui/StarterOverlayController.gd")
 
 const BUILDING_SCENES := {
@@ -33,15 +34,6 @@ const BUILDING_LAYOUT := {
 	"fortune_cat": Vector2(535, 520),
 }
 
-const STATUS_DISPLAY := {
-	GameConstants.LIFECYCLE_STATUS_IDLE: "待命",
-	GameConstants.LIFECYCLE_STATUS_EXPEDITION: "远征中",
-	GameConstants.LIFECYCLE_STATUS_RETIRED: "退休",
-	GameConstants.LIFECYCLE_STATUS_ELDER: "老年",
-	GameConstants.LIFECYCLE_STATUS_DEAD: "死亡",
-	GameConstants.LIFECYCLE_STATUS_BURIED: "已入葬",
-}
-
 @onready var _buildings_root: Node2D = $IsometricWorld/Buildings
 @onready var _cats_root: Node2D = $IsometricWorld/Cats
 @onready var _coins_label: Label = $UI/CampHUD/HBox/CoinsLabel
@@ -64,15 +56,14 @@ var _game_state: Node = null
 var _event_bus: Node = null
 var _day_manager: RefCounted = DayManagerScript.new()
 var _day_summary = CampDaySummaryScript.new()
+var _cat_list_presenter = CampCatListPresenterScript.new()
+var _cat_visual_controller = null
 var _speed_btn: Button = null  # 动态创建的速度切换按钮
 
 var _starter_overlay: Control = null
 var _starter_overlay_controller = null
 var _starter_choice_buttons: Array[Button] = []
 var _expedition_summary_dialog: AcceptDialog = null
-var _cat_visual_positions: Dictionary = {}
-var _cat_building_anchors: Dictionary = {}
-var _cat_anchor_buildings: Dictionary = {}
 
 # 升级按钮容器（动态创建）
 var _action_btn_container: VBoxContainer = null
@@ -87,6 +78,7 @@ func _ready() -> void:
 	if _game_state != null and _game_state.has_method("ensure_intro_state"):
 		_game_state.ensure_intro_state()
 	_init_action_btn_container()
+	_setup_cat_visual_controller()
 	_spawn_buildings()
 	_bind_signals()
 	_bind_time_signals()
@@ -257,84 +249,13 @@ func _show_building_preview(building_id: String) -> void:
 	)
 
 func _refresh_cat_nodes() -> void:
-	_capture_cat_visual_state()
-	for child: Node in _cats_root.get_children():
-		child.queue_free()
-	# 活猫 + 死猫（死猫在入葬前占坑位，需要显示）
-	var all_cats: Array = _game_state.cats
-	var active_cat_ids: Dictionary = {}
-	for cat in all_cats:
-		if cat == null:
-			continue
-		if cat.status == GameConstants.LIFECYCLE_STATUS_BURIED:
-			continue  # 已入葬，不再显示
-		active_cat_ids[cat.id] = true
-		var cat_sprite: Node2D = CatSpriteScene.instantiate()
-		cat_sprite.global_position = _get_cached_cat_position(cat.id)
-		cat_sprite.call("setup", cat)
-		# 活猫才设建筑锚点
-		if cat.status != GameConstants.LIFECYCLE_STATUS_DEAD:
-			var assigned: String = str(cat.assigned_building)
-			if not assigned.is_empty() and BUILDING_LAYOUT.has(assigned):
-				var anchor := _get_cached_cat_anchor(cat.id, assigned)
-				cat_sprite.call("set_building_anchor", assigned, anchor)
-			else:
-				_clear_cached_cat_anchor(cat.id)
-		if cat_sprite.has_signal("drop_requested"):
-			cat_sprite.connect("drop_requested", _on_cat_drop_requested)
-		_cats_root.add_child(cat_sprite)
-	_prune_cat_visual_cache(active_cat_ids)
+	_cat_visual_controller.refresh()
 
-func _capture_cat_visual_state() -> void:
-	for child: Node in _cats_root.get_children():
-		var cat_sprite := child as Node2D
-		if cat_sprite == null:
-			continue
-		var child_cat := child.get("cat_data") as CatData
-		if child_cat == null or child_cat.id.is_empty():
-			continue
-		_cat_visual_positions[child_cat.id] = cat_sprite.global_position
-		if child.has_method("has_building_anchor") and bool(child.call("has_building_anchor")):
-			_cat_building_anchors[child_cat.id] = child.call("get_building_anchor")
-			_cat_anchor_buildings[child_cat.id] = str(child_cat.assigned_building)
-		else:
-			_clear_cached_cat_anchor(child_cat.id)
-
-func _get_cached_cat_position(cat_id: String) -> Vector2:
-	if not cat_id.is_empty() and _cat_visual_positions.has(cat_id):
-		return _cat_visual_positions[cat_id]
-	return _random_cat_spawn_position()
-
-func _get_cached_cat_anchor(cat_id: String, building_id: String) -> Vector2:
-	if _cat_anchor_buildings.get(cat_id, "") == building_id and _cat_building_anchors.has(cat_id):
-		return _cat_building_anchors[cat_id]
-	var anchor: Vector2 = BUILDING_LAYOUT[building_id]
-	anchor += Vector2(randf_range(-20.0, 20.0), randf_range(-15.0, 15.0))
-	_cat_building_anchors[cat_id] = anchor
-	_cat_anchor_buildings[cat_id] = building_id
-	return anchor
-
-func _clear_cached_cat_anchor(cat_id: String) -> void:
-	_cat_building_anchors.erase(cat_id)
-	_cat_anchor_buildings.erase(cat_id)
-
-func _prune_cat_visual_cache(active_cat_ids: Dictionary) -> void:
-	for cat_id in _cat_visual_positions.keys():
-		if not active_cat_ids.has(cat_id):
-			_cat_visual_positions.erase(cat_id)
-	for cat_id in _cat_building_anchors.keys():
-		if not active_cat_ids.has(cat_id):
-			_cat_building_anchors.erase(cat_id)
-	for cat_id in _cat_anchor_buildings.keys():
-		if not active_cat_ids.has(cat_id):
-			_cat_anchor_buildings.erase(cat_id)
-
-func _random_cat_spawn_position() -> Vector2:
-	var rect: Rect2 = GameConstants.CAMP_CAT_SPAWN_RECT
-	return Vector2(
-		randf_range(rect.position.x, rect.end.x),
-		randf_range(rect.position.y, rect.end.y)
-	)
+func _setup_cat_visual_controller() -> void:
+	_cat_visual_controller = CampCatVisualControllerScript.new()
+	_cat_visual_controller.cat_drop_requested.connect(_on_cat_drop_requested)
+	add_child(_cat_visual_controller)
+	_cat_visual_controller.setup(_cats_root, _game_state, BUILDING_LAYOUT)
 
 func _show_building_sidebar(building_id: String) -> void:
 	_selected_building_id = building_id
@@ -765,35 +686,7 @@ func _refresh_hud() -> void:
 		_speed_btn.text = _format_speed_text(_time_manager.time_speed)
 
 func _refresh_cat_list() -> void:
-	var lines: PackedStringArray = []
-	for cat in _game_state.cats:
-		if cat == null:
-			continue
-		if cat.status == GameConstants.LIFECYCLE_STATUS_BURIED:
-			continue
-		var health_tag := ""
-		if cat.status != GameConstants.LIFECYCLE_STATUS_DEAD:
-			match cat.health:
-				GameConstants.HEALTH_STATE_SICK:     health_tag = " 🤒"
-				GameConstants.HEALTH_STATE_CRITICAL: health_tag = " 🆘"
-		var dead_tag := " 💀（拖入墓地入葬）" if cat.status == GameConstants.LIFECYCLE_STATUS_DEAD else ""
-		lines.append(
-			"%s | %s | %s | %s | %d天 | %s%s%s"
-			% [
-				cat.cat_name,
-				GameConstants.sex_display(cat.sex),
-				GameConstants.profession_zh(cat.profession),
-				GameConstants.breed_zh(cat.breed),
-				cat.age_days,
-				_cat_runtime_status_text(cat),
-				health_tag,
-				dead_tag,
-			]
-		)
-	if lines.is_empty():
-		_cat_list_text.text = "选择你的第一只猫开始游戏。"
-		return
-	_cat_list_text.text = "\n".join(lines)
+	_cat_list_presenter.refresh(_cat_list_text, _game_state)
 
 func _refresh_stray_ui() -> void:
 	_stray_panel.visible = not _game_state.stray_cat_queue.is_empty()
@@ -827,15 +720,6 @@ func _on_breeding_success(child: CatData) -> void:
 	_set_sidebar_text("🐱 新生！%s 在产房诞生了。" % child.cat_name)
 	if _breeding_ui.has_method("refresh"):
 		_breeding_ui.call("refresh")
-
-func _cat_runtime_status_text(cat: CatData) -> String:
-	var status_text := _status_zh(cat.status)
-	if _game_state != null and _game_state.has_method("is_cat_breeding") and _game_state.is_cat_breeding(cat):
-		status_text += " / 繁育中"
-	return status_text
-
-func _status_zh(status_id: String) -> String:
-	return str(STATUS_DISPLAY.get(status_id, status_id))
 
 func _building_display_name(building_id: String) -> String:
 	match building_id:

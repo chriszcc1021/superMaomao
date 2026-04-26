@@ -58,10 +58,10 @@
 ### Phase 1：拆分营地场景
 
 - [ ] 从 `CampScene.gd` 中拆出建筑展示 / 点击逻辑。
-- [ ] 从 `CampScene.gd` 中拆出猫咪列表和猫咪节点刷新逻辑。
-- [ ] 从 `CampScene.gd` 中拆出初始选猫 overlay。
-- [ ] 从 `CampScene.gd` 中拆出日结算展示逻辑。
-- [ ] 保持现有节点路径和 UI 行为不变。
+- [x] 从 `CampScene.gd` 中拆出猫咪列表和猫咪节点刷新逻辑。
+- [x] 从 `CampScene.gd` 中拆出初始选猫 overlay。
+- [x] 从 `CampScene.gd` 中拆出日结算展示逻辑。
+- [x] 保持现有节点路径和 UI 行为不变。
 
 验证标准：
 
